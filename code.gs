@@ -1992,6 +1992,44 @@ function calculateIncumbencyEngine(allLogData, headers, mainDataMap) {
             return 0;
         });
 
+  for (const posId in positions) {
+    const logEntries = positions[posId];
+    const allChangeEventsForPos = logEntries
+      .filter(row => row[timestampIndex])
+      .map(row => ({
+        eventDate: _parseDate(row[effectiveDateIndex]) || _parseDate(row[timestampIndex]),
+        incumbentId: (row[empIdIndex] || '').toString().trim() || null,
+        incumbentName: (row[nameIndex] || '').toString().trim() || 'N/A',
+        jobTitle: (row[jobTitleIndex] || '').toString().trim() || 'N/A',
+        overallHireDate: _parseDate(row[hireDateIndex]),
+        isEffective: !!_parseDate(row[effectiveDateIndex]),
+        status: (row[statusIndex] || '').toString().trim().toUpperCase()
+      }))
+      .filter(e => e.eventDate)
+      .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
+
+    // --- FIX: Filter out consecutive duplicate events for the same incumbent ---
+    const uniqueChangeEvents = allChangeEventsForPos.filter((event, index, arr) => {
+        if (index === 0) return true; // Always keep the very first event
+        // Keep the event if the incumbent is different from the previous one
+        return event.incumbentId !== arr[index - 1].incumbentId;
+    });
+
+
+    if (uniqueChangeEvents.length === 0) continue;
+
+    let historyRecords = [];
+    let i = 0;
+    while (i < uniqueChangeEvents.length) {
+      const startEvent = uniqueChangeEvents[i];
+      if (!startEvent.incumbentId) {
+        i++;
+        continue;
+      }
+      
+      let startDate = startEvent.eventDate;
+      const isInternalMovement = ['PROMOTION', 'INTERNAL TRANSFER', 'LATERAL TRANSFER'].includes(startEvent.status);
+      const isFirstEvent = isFirstEverEventForEmployee(startEvent.incumbentId, startEvent.eventDate, allLogData);
       if (allChangeEventsForPos.length === 0) continue;
 
       let historyRecords = [];
@@ -2072,6 +2110,36 @@ function calculateIncumbencyEngine(allLogData, headers, mainDataMap) {
               }
           }
 
+      let endDate = null;
+      let tenureEndingEvent = null;
+      let nextEventIndex = i + 1;
+
+      for (let j = i + 1; j < uniqueChangeEvents.length; j++) {
+        const nextEvent = uniqueChangeEvents[j];
+        if (nextEvent.incumbentId !== startEvent.incumbentId) {
+          endDate = nextEvent.eventDate;
+          tenureEndingEvent = nextEvent;
+          nextEventIndex = j;
+          break;
+        }
+      }
+
+      if (!endDate) {
+        const liveRecord = mainDataMap.get(posId);
+        if (!liveRecord || liveRecord.employeeId !== startEvent.incumbentId) {
+           endDate = uniqueChangeEvents[uniqueChangeEvents.length - 1].eventDate;
+        }
+      }
+      
+      const lastKnownEventForIncumbent = uniqueChangeEvents.slice().reverse().find(e => e.incumbentId === startEvent.incumbentId) || startEvent;
+
+      historyRecords.push({
+        startDate: startDate,
+        endDate: endDate,
+        incumbentId: startEvent.incumbentId,
+        incumbentName: lastKnownEventForIncumbent.incumbentName,
+        jobTitle: lastKnownEventForIncumbent.jobTitle,
+        overallHireDate: startEvent.overallHireDate
           // Handle "Present" or end after last log entry (Same as v7/v8/v9/v10)
           if (endDate === null) {
               const liveRecord = mainDataMap.get(posId);
