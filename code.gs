@@ -1654,7 +1654,7 @@ function saveEmployeeData(dataObject, mode) {
 
             if (dataObject.status.toUpperCase() === 'VACANT' && originalEmployeeId) {
                 isManualVacate = true;
-                vacatingEmployeeId = originalEmployeeId.toUpperCase();
+                vacatingEmployeeId = String(originalEmployeeId).toUpperCase();
                 vacatedPositionId = positionId;
             }
 
