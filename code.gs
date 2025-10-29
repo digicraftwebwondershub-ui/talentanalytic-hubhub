@@ -599,184 +599,159 @@ function invalidateIncumbencyCache(positionIds) {
 }
 
 
-/**
- * REVISED (v4) - Logs data changes, ensuring effective dates are applied correctly.
- */
 function logDataChanges() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = spreadsheet.getSheets();
-  if (sheets.length === 0) { //
+  if (sheets.length === 0) {
     return;
   }
 
-  const mainSheet = sheets[0]; //
-  const logSheet = spreadsheet.getSheetByName('change_log_sheet'); //
-  if (!logSheet || logSheet.getLastRow() < 1) return; //
+  const mainSheet = sheets[0];
+  const logSheet = spreadsheet.getSheetByName('change_log_sheet');
+  if (!logSheet || logSheet.getLastRow() < 1) return;
 
-  const scriptProperties = PropertiesService.getScriptProperties(); //
-  const lastKnownDataString = scriptProperties.getProperty('lastKnownData'); //
-  if (!lastKnownDataString) return; //
-  const logSheetHeaders = logSheet.getRange(1, 1, 1, logSheet.getLastColumn()).getValues()[0]; //
-  const logHeaderMap = new Map(logSheetHeaders.map((h, i) => [h.trim(), i])); //
-  const mainSheetHeaders = mainSheet.getRange(1, 1, 1, mainSheet.getLastColumn()).getValues()[0]; //
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const lastKnownDataString = scriptProperties.getProperty('lastKnownData');
+  if (!lastKnownDataString) return;
 
-  // Get pending effective dates (these should have been set by saveEmployeeData or implementApprovedChange)
-  const pendingResignationPosId = scriptProperties.getProperty('pendingResignationPosId'); //
-  const pendingResignationDate = scriptProperties.getProperty('pendingResignationDate'); //
-  const pendingEffectiveDatePosId = scriptProperties.getProperty('pendingEffectiveDatePosId'); //
-  const pendingEffectiveDate = scriptProperties.getProperty('pendingEffectiveDate'); //
-  const overrideTimestamp = scriptProperties.getProperty('overrideTimestamp'); // Used for start date usually
-  const isCorrection = scriptProperties.getProperty('isResignationDateCorrection'); //
+  const logSheetHeaders = logSheet.getRange(1, 1, 1, logSheet.getLastColumn()).getValues()[0];
+  const logHeaderMap = new Map(logSheetHeaders.map((h, i) => [h.trim(), i]));
+  const mainSheetHeaders = mainSheet.getRange(1, 1, 1, mainSheet.getLastColumn()).getValues()[0];
 
-  let logTimestamp = new Date(); // Default log timestamp is 'now'
-  let effectiveDateToApply = null; // Variable to hold the specific effective date for this change batch
-  let effectiveDatePosId = null; // Keep track of which Position ID the effective date applies to
+  const pendingResignationPosId = scriptProperties.getProperty('pendingResignationPosId');
+  const pendingResignationDate = scriptProperties.getProperty('pendingResignationDate');
+  const pendingEffectiveDatePosId = scriptProperties.getProperty('pendingEffectiveDatePosId');
+  const pendingEffectiveDate = scriptProperties.getProperty('pendingEffectiveDate');
+  const overrideTimestamp = scriptProperties.getProperty('overrideTimestamp');
+  const isCorrection = scriptProperties.getProperty('isResignationDateCorrection');
 
-  // Determine the primary effective date and relevant PosID for this batch of changes
-  if (pendingResignationPosId && pendingResignationDate) { //
-      effectiveDateToApply = new Date(pendingResignationDate); //
-      effectiveDatePosId = pendingResignationPosId.toUpperCase(); //
-  } else if (pendingEffectiveDatePosId && pendingEffectiveDate) { //
-      effectiveDateToApply = new Date(pendingEffectiveDate); //
-      effectiveDatePosId = pendingEffectiveDatePosId.toUpperCase(); //
-  } else if (overrideTimestamp) { // Used mainly for start dates from form
-      // We generally don't want the 'overrideTimestamp' (startdateinposition) to set the effective date for logging END dates.
-      // effectiveDateToApply = new Date(overrideTimestamp); // Keep commented unless specific need arises
+  let timestamp = new Date();
+  if (overrideTimestamp) {
+    timestamp = new Date(overrideTimestamp);
+    scriptProperties.deleteProperty('overrideTimestamp');
   }
 
+  const incumbencyHistory = JSON.parse(scriptProperties.getProperty('incumbencyHistory') || '{}');
+  const previousData = JSON.parse(lastKnownDataString);
+  const currentData = mainSheet.getLastRow() > 1 ? mainSheet.getRange(2, 1, mainSheet.getLastRow() - 1, mainSheet.getLastColumn()).getValues() : [];
 
-  const incumbencyHistory = JSON.parse(scriptProperties.getProperty('incumbencyHistory') || '{}'); //
-  const previousData = JSON.parse(lastKnownDataString); //
-  const currentData = mainSheet.getLastRow() > 1 ? mainSheet.getRange(2, 1, mainSheet.getLastRow() - 1, mainSheet.getLastColumn()).getValues() : []; //
-  const currentDataMap = new Map(currentData.map(row => [row[0], row])); //
-  const previousDataMap = new Map(previousData.map(row => [row[0], row])); //
-  const previousEmployeeMap = new Map(); //
-  previousData.forEach(row => { //
-    if (row[1]) previousEmployeeMap.set(String(row[1]).trim(), row); //
+  const currentDataMap = new Map(currentData.map(row => [row[0], row]));
+  const previousDataMap = new Map(previousData.map(row => [row[0], row]));
+  const previousEmployeeMap = new Map();
+  previousData.forEach(row => {
+    if (row[1]) previousEmployeeMap.set(String(row[1]).trim(), row);
   });
 
-  const changesToLog = []; //
-  previousDataMap.forEach((prevRow, posId) => { //
-    const currentRow = currentDataMap.get(posId); //
-    // Determine effective date SPECIFICALLY for this posId being processed
-    const currentEffectiveDate = (effectiveDatePosId && posId.toUpperCase() === effectiveDatePosId) ? effectiveDateToApply : null; //
-
-    if (!currentRow) { //
-      // Row Deleted: Log previous state
-      changesToLog.push({ type: 'Deleted', data: prevRow, timestamp: logTimestamp, note: '', effectiveDate: currentEffectiveDate }); // Pass potential effective date
-    } else if (JSON.stringify(prevRow) !== JSON.stringify(currentRow) || (isCorrection && posId === pendingEffectiveDatePosId)) { //
-      let internalTransferNote = ''; //
-      const prevEmpId = prevRow[1]; //
-      const currentEmpId = currentRow[1]; //
-
-      // Detect internal transfer for logging note
-      if (currentEmpId && currentEmpId !== prevEmpId) { //
-        const oldPositionRow = previousEmployeeMap.get(String(currentEmpId).trim()); //
-        if (oldPositionRow && oldPositionRow[0] !== posId) { //
-          internalTransferNote = `From: ${oldPositionRow[8] || 'N/A'} (${oldPositionRow[9] || 'N/A'}) - ${oldPositionRow[5] || 'N/A'}`; //
+  const changesToLog = [];
+  previousDataMap.forEach((prevRow, posId) => {
+    const currentRow = currentDataMap.get(posId);
+    if (!currentRow) {
+      changesToLog.push(prevRow.concat([timestamp, 'Row Deleted', '']));
+    } else if (JSON.stringify(prevRow) !== JSON.stringify(currentRow) || (isCorrection && posId === pendingEffectiveDatePosId)) {
+      let internalTransferNote = '';
+      if (currentRow[1] && currentRow[1] !== prevRow[1]) {
+        const oldPositionRow = previousEmployeeMap.get(String(currentRow[1]).trim());
+        if (oldPositionRow && oldPositionRow[0] !== posId) {
+          internalTransferNote = `From: ${oldPositionRow[8] || 'N/A'} (${oldPositionRow[9] || 'N/A'}) - ${oldPositionRow[5] || 'N/A'}`;
         }
       }
-
-      // Update short-term incumbency history property
-      if (prevEmpId && !currentEmpId && prevRow[2]) { //
-        if (!incumbencyHistory[posId]) incumbencyHistory[posId] = []; //
-        incumbencyHistory[posId].unshift(prevRow[2]); //
-        incumbencyHistory[posId] = incumbencyHistory[posId].slice(0, 10); //
+      if (prevRow[1] && !currentRow[1] && prevRow[2]) {
+        if (!incumbencyHistory[posId]) incumbencyHistory[posId] = [];
+        incumbencyHistory[posId].unshift(prevRow[2]);
+        incumbencyHistory[posId] = incumbencyHistory[posId].slice(0, 10);
       }
-
-      // **Log Change based on Vacancy**
-      if (prevEmpId && !currentEmpId) { //
-        // Employee vacated. Log the state *before* vacancy.
-         changesToLog.push({ type: 'Vacated', data: prevRow, timestamp: logTimestamp, note: internalTransferNote, effectiveDate: currentEffectiveDate }); // Pass effective date
-         // Log the actual vacant state immediately after.
-         changesToLog.push({ type: 'Is Vacant', data: currentRow, timestamp: logTimestamp, note: internalTransferNote, effectiveDate: currentEffectiveDate }); // Pass effective date
+      
+      if (prevRow[1] && !currentRow[1]) {
+        changesToLog.push(prevRow.concat([timestamp, 'Row Modified', internalTransferNote]));
       } else {
-        // Standard Row Modified or Correction
-        changesToLog.push({ type: 'Modified', data: currentRow, timestamp: logTimestamp, note: internalTransferNote, effectiveDate: currentEffectiveDate }); // Pass effective date (might be null)
+        changesToLog.push(currentRow.concat([timestamp, 'Row Modified', internalTransferNote]));
       }
     }
   });
 
-  currentDataMap.forEach((currentRow, posId) => { //
-    if (!previousDataMap.has(posId)) { //
-      // Row Added
-       const currentEffectiveDate = (effectiveDatePosId && posId.toUpperCase() === effectiveDatePosId) ? effectiveDateToApply : null; // Check if relevant
-      let internalTransferNote = ''; //
-      if (currentRow[1]) { //
-        const oldPositionRow = previousEmployeeMap.get(String(currentRow[1]).trim()); //
-        if (oldPositionRow) { //
-          internalTransferNote = `From: ${oldPositionRow[8] || 'N/A'} (${oldPositionRow[9] || 'N/A'}) - ${oldPositionRow[5] || 'N/A'}`; //
+  currentDataMap.forEach((currentRow, posId) => {
+    if (!previousDataMap.has(posId)) {
+      let internalTransferNote = '';
+      if (currentRow[1]) {
+        const oldPositionRow = previousEmployeeMap.get(String(currentRow[1]).trim());
+        if (oldPositionRow) {
+          internalTransferNote = `From: ${oldPositionRow[8] || 'N/A'} (${oldPositionRow[9] || 'N/A'}) - ${oldPositionRow[5] || 'N/A'}`;
         }
       }
-      changesToLog.push({ type: 'Added', data: currentRow, timestamp: logTimestamp, note: internalTransferNote, effectiveDate: currentEffectiveDate }); // Pass effective date
+      changesToLog.push(currentRow.concat([timestamp, 'Row Added', internalTransferNote]));
     }
   });
-  // --- END REVISED LOGGING LOGIC ---
 
-  if (changesToLog.length > 0) { //
-    const modifiedPositionIds = [...new Set(changesToLog.map(change => change.data[0]).filter(String))]; //
-    invalidateIncumbencyCache(modifiedPositionIds); //
+  if (changesToLog.length > 0) {
+    const modifiedPositionIds = [...new Set(changesToLog.map(row => row[0]).filter(String))];
+    invalidateIncumbencyCache(modifiedPositionIds);
 
-    const effectiveDateIndex = logHeaderMap.get('Effective Date'); // Get index ONCE
+    const logData = changesToLog.map(function(changedRow) {
+      const newLogRow = Array(logSheetHeaders.length).fill('');
+      const changeType = changedRow[changedRow.length - 2];
+      const posId = changedRow[0];
+      const empId = changedRow[1];
 
-    const logData = changesToLog.map(function(change) { //
-      const changedRow = change.data; //
-      const newLogRow = Array(logSheetHeaders.length).fill(''); //
-      const changeType = change.type; //
-      const posId = changedRow[0]; //
-
-      mainSheetHeaders.forEach((header, i) => { //
-        if (logHeaderMap.has(header.trim())) { //
-          newLogRow[logHeaderMap.get(header.trim())] = changedRow[i]; //
+      mainSheetHeaders.forEach((header, i) => {
+        if (logHeaderMap.has(header.trim())) {
+          newLogRow[logHeaderMap.get(header.trim())] = changedRow[i];
         }
       });
 
-      const headcount = getCurrentHeadcounts(changedRow[6], changedRow[8], changedRow[9], currentData); // Use currentData for headcount
-      if (logHeaderMap.has('Change Type')) newLogRow[logHeaderMap.get('Change Type')] = changeType; //
-      if (logHeaderMap.has('Transfer Note')) newLogRow[logHeaderMap.get('Transfer Note')] = change.note; //
-      if (logHeaderMap.has('Change Timestamp')) newLogRow[logHeaderMap.get('Change Timestamp')] = change.timestamp; //
-      if (logHeaderMap.has('Division Headcount')) newLogRow[logHeaderMap.get('Division Headcount')] = headcount.division; //
-      if (logHeaderMap.has('Department Headcount')) newLogRow[logHeaderMap.get('Department Headcount')] = headcount.department; //
-      if (logHeaderMap.has('Section Headcount')) newLogRow[logHeaderMap.get('Section Headcount')] = headcount.section; //
+      const headcount = getCurrentHeadcounts(changedRow[6], changedRow[8], changedRow[9], currentData);
+      if (logHeaderMap.has('Change Type')) newLogRow[logHeaderMap.get('Change Type')] = changeType;
+      if (logHeaderMap.has('Transfer Note')) newLogRow[logHeaderMap.get('Transfer Note')] = changedRow[changedRow.length - 1];
+      if (logHeaderMap.has('Change Timestamp')) newLogRow[logHeaderMap.get('Change Timestamp')] = changedRow[changedRow.length - 3];
+      if (logHeaderMap.has('Division Headcount')) newLogRow[logHeaderMap.get('Division Headcount')] = headcount.division;
+      if (logHeaderMap.has('Department Headcount')) newLogRow[logHeaderMap.get('Department Headcount')] = headcount.department;
+      if (logHeaderMap.has('Section Headcount')) newLogRow[logHeaderMap.get('Section Headcount')] = headcount.section;
 
-      // --- Apply the determined effective date ---
-      if (effectiveDateIndex !== undefined && change.effectiveDate instanceof Date && !isNaN(change.effectiveDate)) { //
-          // Make sure it's a valid Date object before applying
-          newLogRow[effectiveDateIndex] = change.effectiveDate; // Apply the date passed in the change object
+      const effectiveDateIndex = logHeaderMap.get('Effective Date');
+      if (effectiveDateIndex !== undefined) {
+        // This is the definitive vacating event from a promotion/transfer.
+        // It's identified by the pending property, and we ensure it's only used once
+        // by checking that the log entry still contains the employee from the `prevRow`.
+        const logContainsEmployee = !!changedRow[mainSheetHeaders.indexOf('Employee ID')];
+
+        if (pendingResignationPosId && pendingResignationDate && posId.toUpperCase() === pendingResignationPosId.toUpperCase() && logContainsEmployee) {
+          newLogRow[effectiveDateIndex] = new Date(pendingResignationDate);
+
+          // CRITICAL: Immediately delete the properties after using them once.
+          // This prevents a subsequent cascading update (e.g., reporting line change)
+          // from creating a second log entry for the same position and incorrectly
+          // reusing the promotion date.
+          scriptProperties.deleteProperty('pendingResignationPosId');
+          scriptProperties.deleteProperty('pendingResignationDate');
+        }
+        // This handles other scenarios like a direct resignation from the form.
+        else if (pendingEffectiveDatePosId && pendingEffectiveDate && posId.toUpperCase() === pendingEffectiveDatePosId.toUpperCase()) {
+          newLogRow[effectiveDateIndex] = new Date(pendingEffectiveDate);
+        }
       }
-      // --- End Apply Logic ---
-
-      return newLogRow; //
+      return newLogRow;
     });
 
-    // --- Cleanup pending properties AFTER processing all changes for the batch ---
-     if (pendingResignationPosId) { //
-        scriptProperties.deleteProperty('pendingResignationPosId'); //
-        scriptProperties.deleteProperty('pendingResignationDate'); //
-     }
-     if (pendingEffectiveDatePosId) { //
-        scriptProperties.deleteProperty('pendingEffectiveDatePosId'); //
-        scriptProperties.deleteProperty('pendingEffectiveDate'); //
-     }
-     if (overrideTimestamp) { //
-         scriptProperties.deleteProperty('overrideTimestamp'); // Also clean up override timestamp
-     }
-     // --- End Cleanup ---
-
-
-    if (isCorrection) { //
-      scriptProperties.deleteProperty('isResignationDateCorrection'); //
+    if (pendingEffectiveDatePosId) {
+      scriptProperties.deleteProperty('pendingEffectiveDatePosId');
+      scriptProperties.deleteProperty('pendingEffectiveDate');
+    }
+    if (pendingResignationPosId) {
+      scriptProperties.deleteProperty('pendingResignationPosId');
+      scriptProperties.deleteProperty('pendingResignationDate');
+    }
+    
+    if (isCorrection) {
+      scriptProperties.deleteProperty('isResignationDateCorrection');
     }
 
-    if (logData.length > 0) { //
-      logSheet.getRange(logSheet.getLastRow() + 1, 1, logData.length, logData[0].length).setValues(logData); //
+    if (logData.length > 0) {
+      logSheet.getRange(logSheet.getLastRow() + 1, 1, logData.length, logData[0].length).setValues(logData);
     }
   }
 
-  // Update script properties with the current state (remains the same)
-  PropertiesService.getScriptProperties().setProperty('lastKnownData', JSON.stringify(currentData)); //
-  PropertiesService.getScriptProperties().setProperty('lastKnownColumnCount', String(mainSheet.getLastColumn())); //
-  PropertiesService.getScriptProperties().setProperty('incumbencyHistory', JSON.stringify(incumbencyHistory)); //
+  PropertiesService.getScriptProperties().setProperty('lastKnownData', JSON.stringify(currentData));
+  PropertiesService.getScriptProperties().setProperty('lastKnownColumnCount', String(mainSheet.getLastColumn()));
+  PropertiesService.getScriptProperties().setProperty('incumbencyHistory', JSON.stringify(incumbencyHistory));
 }
 
 function getCurrentHeadcounts(division, department, section, allData) {
@@ -1814,29 +1789,20 @@ function deactivatePosition(positionId) {
 }
 
 
-// Helper to parse dates robustly, respecting script/spreadsheet timezone
-    function _parseDate(dateValue) {
-      if (!dateValue) return null;
-      let parsedDate;
-      if (dateValue instanceof Date && !isNaN(dateValue)) {
-          // If it's already a valid Date object from Apps Script (likely in script timezone)
-          parsedDate = new Date(dateValue.getTime()); // Clone it to prevent side effects
-      } else {
-          // Attempt to parse string/number. Apps Script often does this relative to script timezone.
-          parsedDate = new Date(dateValue);
-      }
+// PASTE THIS ENTIRE CORRECTED CODE BLOCK
 
-      // Basic validation
-      if (isNaN(parsedDate) || parsedDate.getFullYear() < 1900 || parsedDate.getFullYear() > 2100) {
-          Logger.log(`WARN (_parseDate v8): Could not parse date value: ${dateValue}`);
-          return null;
-      }
-
-      // *** CHANGE: Do NOT normalize to UTC midnight here. Work with the date as parsed. ***
-      // parsedDate.setUTCHours(0, 0, 0, 0); // REMOVED THIS LINE
-
-      return parsedDate; // Return the Date object potentially with time component
-    }
+/**
+ * HELPER FUNCTION to safely parse dates from the spreadsheet.
+ * THIS WAS THE MISSING PIECE.
+ * @param {any} dateValue - The value from the spreadsheet cell.
+ * @returns {Date|null} A valid Date object or null.
+ */
+function _parseDate(dateValue) {
+  if (!dateValue) return null;
+  if (dateValue instanceof Date && !isNaN(dateValue)) return dateValue;
+  const parsedDate = new Date(dateValue);
+  return !isNaN(parsedDate) ? parsedDate : null;
+}
 
 /**
  * REVISED - Generates the Incumbency History report sheet.
@@ -1918,79 +1884,40 @@ function generateIncumbencyReport() {
 }
 
 
-/**
- * REVISED (v11) - Core engine to calculate incumbency periods from log data.
- * - Start Date = Effective Date of the event starting the tenure in *this* position. (FIXED)
- * - End Date = Effective Date of the EXACT ending event.
- * - Overall Hire Date tracked separately using the earliest 'Date Hired' found.
- * - Includes refined _parseDate (v8) to avoid UTC normalization.
- */
 function calculateIncumbencyEngine(allLogData, headers, mainDataMap) {
-    const posIdIndex = headers.indexOf('Position ID');
-    const empIdIndex = headers.indexOf('Employee ID');
-    const nameIndex = headers.indexOf('Employee Name');
-    const jobTitleIndex = headers.indexOf('Job Title');
-    const timestampIndex = headers.indexOf('Change Timestamp');
-    const effectiveDateIndex = headers.indexOf('Effective Date');
-    const hireDateIndex = headers.indexOf('Date Hired'); // This field in the log holds the overall hire date
-    const statusIndex = headers.indexOf('Status');
+  const posIdIndex = headers.indexOf('Position ID');
+  const empIdIndex = headers.indexOf('Employee ID');
+  const nameIndex = headers.indexOf('Employee Name');
+  const jobTitleIndex = headers.indexOf('Job Title');
+  const timestampIndex = headers.indexOf('Change Timestamp');
+  const effectiveDateIndex = headers.indexOf('Effective Date');
+  const hireDateIndex = headers.indexOf('Date Hired');
+  const statusIndex = headers.indexOf('Status');
 
-    // Helper to parse dates robustly, respecting script/spreadsheet timezone (v8)
-    function _parseDate(dateValue) {
-      if (!dateValue) return null;
-      let parsedDate;
-      if (dateValue instanceof Date && !isNaN(dateValue)) {
-          parsedDate = new Date(dateValue.getTime()); // Clone
-      } else {
-          parsedDate = new Date(dateValue);
+  const isFirstEverEventForEmployee = (employeeId, eventDate, allLogs) => {
+    if (!employeeId) return false;
+    for (const row of allLogs) {
+      const logEmpId = (row[empIdIndex] || '').toString().trim();
+      if (logEmpId === employeeId) {
+        const logEventDate = _parseDate(row[effectiveDateIndex]) || _parseDate(row[timestampIndex]);
+        if (logEventDate && logEventDate.getTime() < eventDate.getTime()) {
+          return false;
+        }
       }
-      if (isNaN(parsedDate) || parsedDate.getFullYear() < 1900 || parsedDate.getFullYear() > 2100) {
-          Logger.log(`WARN (_parseDate v8): Could not parse date value: ${dateValue}`);
-          return null;
-      }
-      return parsedDate; // Return Date object without UTC normalization
     }
+    return true;
+  };
 
-    // Group log entries by Position ID (Same)
-    const positions = {};
-    allLogData.forEach(row => {
-      const posId = row[posIdIndex];
-      if (posId) {
-        if (!positions[posId]) positions[posId] = [];
-        positions[posId].push(row);
-      }
-    });
+  const positions = {};
+  allLogData.forEach(row => {
+    const posId = row[posIdIndex];
+    if (posId) {
+      if (!positions[posId]) positions[posId] = [];
+      positions[posId].push(row);
+    }
+  });
 
-    const finalHistory = {};
-
-    for (const posId in positions) {
-      const logEntries = positions[posId];
-
-      // Map log entries and Sort (Same)
-      const allChangeEventsForPos = logEntries
-        .map(row => ({
-          eventDate: _parseDate(row[effectiveDateIndex]) || _parseDate(row[timestampIndex]), // Effective Date of this log event
-          incumbentId: (row[empIdIndex] || '').toString().trim() || null,
-          incumbentName: (row[nameIndex] || '').toString().trim() || 'N/A',
-          jobTitle: (row[jobTitleIndex] || '').toString().trim() || 'N/A',
-          logEntryHireDate: _parseDate(row[hireDateIndex]), // Overall Hire Date from this log entry
-          status: (row[statusIndex] || '').toString().trim().toUpperCase(),
-          rawRowData: row
-        }))
-        .filter(e => e.eventDate)
-        .sort((a, b) => { // Sorting with tie-breaking (Same)
-            const dateComparison = a.eventDate.getTime() - b.eventDate.getTime();
-            if (dateComparison !== 0) return dateComparison;
-            const aHasEmp = !!a.incumbentId;
-            const bHasEmp = !!b.incumbentId;
-            if (aHasEmp && !bHasEmp) return -1;
-            if (!aHasEmp && bHasEmp) return 1;
-            const aAdds = aHasEmp && ['NEW HIRE', 'PROMOTION', 'INTERNAL TRANSFER', 'LATERAL TRANSFER', 'FILLED VACANCY'].includes(a.status);
-            const bAdds = bHasEmp && ['NEW HIRE', 'PROMOTION', 'INTERNAL TRANSFER', 'LATERAL TRANSFER', 'FILLED VACANCY'].includes(b.status);
-            if (aAdds && !bAdds) return -1;
-            if (!aAdds && bAdds) return 1;
-            return 0;
-        });
+  const finalHistory = {};
 
   for (const posId in positions) {
     const logEntries = positions[posId];
@@ -2030,85 +1957,10 @@ function calculateIncumbencyEngine(allLogData, headers, mainDataMap) {
       let startDate = startEvent.eventDate;
       const isInternalMovement = ['PROMOTION', 'INTERNAL TRANSFER', 'LATERAL TRANSFER'].includes(startEvent.status);
       const isFirstEvent = isFirstEverEventForEmployee(startEvent.incumbentId, startEvent.eventDate, allLogData);
-      if (allChangeEventsForPos.length === 0) continue;
 
-      let historyRecords = [];
-      let i = 0;
-      while (i < allChangeEventsForPos.length) {
-          // Find the first event WITH an employee ID (Same)
-          let startEventIndex = -1;
-          for (let findStart = i; findStart < allChangeEventsForPos.length; findStart++) {
-              if (allChangeEventsForPos[findStart].incumbentId) {
-                  startEventIndex = findStart;
-                  break;
-              }
-          }
-          if (startEventIndex === -1) break;
-
-          const startEvent = allChangeEventsForPos[startEventIndex];
-          const currentIncumbentId = startEvent.incumbentId;
-          let earliestOverallHireDateFound = startEvent.logEntryHireDate; // Track overall hire date
-
-          // --- Find the first event FOR THIS TENURE PERIOD (Same as v10) ---
-          let firstEventForThisTenure = startEvent;
-          for (let k = startEventIndex - 1; k >= i; k--) {
-              if (allChangeEventsForPos[k].incumbentId === currentIncumbentId) {
-                  firstEventForThisTenure = allChangeEventsForPos[k]; // Keep going back
-                  if (firstEventForThisTenure.logEntryHireDate && (!earliestOverallHireDateFound || firstEventForThisTenure.logEntryHireDate.getTime() < earliestOverallHireDateFound.getTime())) {
-                       earliestOverallHireDateFound = firstEventForThisTenure.logEntryHireDate;
-                  }
-              } else {
-                  break; // Found different person or vacancy
-              }
-          }
-           // Ensure earliestOverallHireDateFound has the absolute earliest after looking back
-           if (firstEventForThisTenure.logEntryHireDate && (!earliestOverallHireDateFound || firstEventForThisTenure.logEntryHireDate.getTime() < earliestOverallHireDateFound.getTime())) {
-                earliestOverallHireDateFound = firstEventForThisTenure.logEntryHireDate;
-           }
-          // --- END Find first event ---
-
-
-          // *** CRITICAL START DATE LOGIC (v11 FIX) ***
-          // Start Date in Position = The EFFECTIVE DATE (`eventDate`) of the log entry representing the start of this tenure period.
-          const startDate = firstEventForThisTenure.eventDate; // Use eventDate (Effective Date)
-          Logger.log(`v11: Pos ${posId}, Inc ${currentIncumbentId}: First event for tenure is at index ${allChangeEventsForPos.indexOf(firstEventForThisTenure)}. Using its eventDate (${firstEventForThisTenure.eventDate}) as Start Date.`);
-          // --- END v11 Start Date Logic ---
-
-
-          // Find representative name/title (Same - use firstEventForThisTenure)
-          let representativeName = firstEventForThisTenure.incumbentName;
-          let representativeJobTitle = firstEventForThisTenure.jobTitle;
-           // Look slightly forward from firstEventForThisTenure for better data
-           for (let k = allChangeEventsForPos.indexOf(firstEventForThisTenure); k <= startEventIndex && k < allChangeEventsForPos.length; k++) {
-               if (allChangeEventsForPos[k].incumbentId === currentIncumbentId) {
-                   if(allChangeEventsForPos[k].incumbentName !== 'N/A' && representativeName === 'N/A') representativeName = allChangeEventsForPos[k].incumbentName;
-                   if(allChangeEventsForPos[k].jobTitle !== 'N/A' && representativeJobTitle === 'N/A') representativeJobTitle = allChangeEventsForPos[k].jobTitle;
-                   // Ensure earliest overall hire date is captured from this forward check too
-                   if (allChangeEventsForPos[k].logEntryHireDate && (!earliestOverallHireDateFound || allChangeEventsForPos[k].logEntryHireDate.getTime() < earliestOverallHireDateFound.getTime())) {
-                       earliestOverallHireDateFound = allChangeEventsForPos[k].logEntryHireDate;
-                   }
-               }
-               if(representativeName !== 'N/A' && representativeJobTitle !== 'N/A') break;
-           }
-
-
-          let endDate = null;
-          let endEventIndex = -1;
-
-          // Look *forward* for the STRICT end event (Same as v7/v8/v9/v10)
-          for (let j = startEventIndex + 1; j < allChangeEventsForPos.length; j++) {
-              const nextEvent = allChangeEventsForPos[j];
-              if (nextEvent.incumbentId !== currentIncumbentId) {
-                   endDate = nextEvent.eventDate; // Use EFFECTIVE DATE of ending event
-                   endEventIndex = j;
-                   Logger.log(`v11: Pos ${posId}, Inc ${currentIncumbentId}: Found end event index ${j}, date ${endDate}`);
-                   break;
-              }
-              // Also update overall hire date if found later
-              if (nextEvent.logEntryHireDate && (!earliestOverallHireDateFound || nextEvent.logEntryHireDate.getTime() < earliestOverallHireDateFound.getTime())) {
-                 earliestOverallHireDateFound = nextEvent.logEntryHireDate;
-              }
-          }
+      if (!isInternalMovement && isFirstEvent && startEvent.overallHireDate && startEvent.overallHireDate.getTime() < startEvent.eventDate.getTime()) {
+        startDate = startEvent.overallHireDate;
+      }
 
       let endDate = null;
       let tenureEndingEvent = null;
@@ -2140,95 +1992,28 @@ function calculateIncumbencyEngine(allLogData, headers, mainDataMap) {
         incumbentName: lastKnownEventForIncumbent.incumbentName,
         jobTitle: lastKnownEventForIncumbent.jobTitle,
         overallHireDate: startEvent.overallHireDate
-          // Handle "Present" or end after last log entry (Same as v7/v8/v9/v10)
-          if (endDate === null) {
-              const liveRecord = mainDataMap.get(posId);
-              if (!liveRecord || liveRecord.employeeId !== currentIncumbentId) {
-                   const lastEventOverall = allChangeEventsForPos[allChangeEventsForPos.length - 1];
-                   if(lastEventOverall) {
-                       endDate = lastEventOverall.eventDate; // Use EFFECTIVE DATE of last event overall
-                       Logger.log(`v11: Pos ${posId}, Inc ${currentIncumbentId}: No log end, not live. Setting end date=${endDate}`);
-                   } else {
-                      endDate = startDate; // Fallback
-                      Logger.log(`v11: Pos ${posId}, Inc ${currentIncumbentId}: No log end, not live, no overall last event? Setting end date = start date: ${endDate}`);
-                   }
-              } else {
-                  Logger.log(`v11: Pos ${posId}, Inc ${currentIncumbentId}: No log end, IS live. End date=null (Present).`);
-              }
-          }
-
-          // Add the record if startDate is valid
-          if (startDate) {
-              Logger.log(`v11: Adding Record - Pos:${posId}, Inc:${currentIncumbentId}, Name:${representativeName}, Start:${startDate}, End:${endDate}, OverallHire:${earliestOverallHireDateFound}`);
-              historyRecords.push({
-                  startDate: startDate, // *** USES EFFECTIVE DATE OF STARTING EVENT ***
-                  endDate: endDate,     // *** USES EFFECTIVE DATE OF ENDING EVENT ***
-                  incumbentId: currentIncumbentId,
-                  incumbentName: representativeName,
-                  jobTitle: representativeJobTitle,
-                  overallHireDate: earliestOverallHireDateFound // Keep overall hire date separate
-              });
-          } else {
-              Logger.log(`WARN (v11): Invalid start date for ${currentIncumbentId} in ${posId}. Skipping.`);
-          }
-
-          // Determine where to start next search (Same as v7/v8/v9/v10)
-          if (endEventIndex !== -1) {
-              i = endEventIndex;
-          } else {
-              break;
-          }
-      } // End while loop
-
-      // Filter zero-duration records (Same as v8/v9/v10)
-      historyRecords = historyRecords.filter((rec, index, arr) => {
-          // Use getTime() for accurate comparison, avoiding timezone issues at this stage
-          if (rec.startDate && rec.endDate && rec.startDate.getTime() === rec.endDate.getTime()) {
-              const isPresent = !rec.endDate;
-               const keepZeroDay = arr.length === 1 ? !isPresent : true;
-               if (!keepZeroDay) {
-                   Logger.log(`v11: Filtering zero-day record for ${posId} - ${rec.incumbentName}`);
-               }
-               return keepZeroDay;
-          }
-          return true;
       });
+      
+      i = nextEventIndex;
+    }
 
-      // Add change count (Same)
-      const changeCount = new Set(historyRecords.map(r => r.incumbentId)).size;
-      historyRecords.forEach(rec => rec.changeCount = changeCount);
+    const changeCount = new Set(historyRecords.map(r => r.incumbentId)).size;
+    historyRecords.forEach(rec => rec.changeCount = changeCount);
 
-      finalHistory[posId] = historyRecords;
-    } // End for...in positions loop
-    Logger.log(`v11: Finished processing. Final history object keys: ${Object.keys(finalHistory).join(', ')}`);
-    return finalHistory;
+    finalHistory[posId] = historyRecords;
+  }
+  return finalHistory;
 }
 
-/**
- * REVISED (v11/Tenure Fix v5) - Fetches and formats detailed incumbency history.
- * - Uses calculateIncumbencyEngine (v12 - correct start date).
- * - Implements standard day difference calculation for tenure.
- */
+
 function getDetailedIncumbencyHistory(posId) {
   const cache = CacheService.getScriptCache();
   const cacheKey = `incumbency_history_${posId}`;
   const cachedHistory = cache.get(cacheKey);
 
-  // --- Cache Handling (Includes re-parsing dates) ---
   if (cachedHistory) {
-    try {
-        const parsedCache = JSON.parse(cachedHistory);
-        parsedCache.forEach(rec => {
-            rec.startDateObj = rec.rawStartDate ? new Date(rec.rawStartDate) : null;
-            rec.endDateObj = rec.rawEndDate ? new Date(rec.rawEndDate) : null;
-            rec.overallHireDateObj = rec.rawOverallHireDate ? new Date(rec.rawOverallHireDate) : null;
-        });
-        // Logger.log(`v11/TenureFix v5: Served history for ${posId} from cache.`);
-        return parsedCache;
-     } catch(e) { Logger.log(`Cache parsing error for ${posId} v5: ${e.message}`); /* ignore parsing error, fetch fresh */ }
+    return JSON.parse(cachedHistory);
   }
-  Logger.log(`v11/TenureFix v5: Cache miss or error for ${posId}. Fetching fresh history.`);
-  // --- End Cache Handling ---
 
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -2236,130 +2021,68 @@ function getDetailedIncumbencyHistory(posId) {
     const logSheet = spreadsheet.getSheetByName('change_log_sheet');
     if (!logSheet || !mainSheet || logSheet.getLastRow() < 2) return [];
 
-    // Get current data map (Same)
-     const mainData = mainSheet.getLastRow() > 1 ?
-        mainSheet.getRange(2, 1, mainSheet.getLastRow() - 1, mainSheet.getLastColumn()).getValues() : [];
+    const mainData = mainSheet.getLastRow() > 1 ? mainSheet.getRange(2, 1, mainSheet.getLastRow() - 1, mainSheet.getLastColumn()).getValues() : [];
     const mainHeader = mainSheet.getRange(1,1,1,mainSheet.getLastColumn()).getValues()[0];
     const posIdHeaderIndex = mainHeader.indexOf('Position ID');
     const empIdHeaderIndex = mainHeader.indexOf('Employee ID');
-    const empNameHeaderIndex = mainHeader.indexOf('Employee Name');
-    const mainDataMap = new Map();
-    mainData.forEach(row => {
-        mainDataMap.set(row[posIdHeaderIndex], {
-            employeeId: (row[empIdHeaderIndex] || '').toString().trim(),
-            employeeName: (row[empNameHeaderIndex] || '').toString().trim()
-        });
-    });
 
-    // Get log data and run through the engine (v12 - with correct start date logic)
+    const mainDataMap = new Map(mainData.map(row => [row[posIdHeaderIndex], {employeeId: (row[empIdHeaderIndex] || '').toString().trim()}]));
+
     const allLogDataWithHeaders = logSheet.getDataRange().getValues();
     const headers = allLogDataWithHeaders.shift();
     const allLogData = allLogDataWithHeaders;
-    const allHistory = calculateIncumbencyEngine(allLogData, headers, mainDataMap); // Use the v12 engine
+
+    const allHistory = calculateIncumbencyEngine(allLogData, headers, mainDataMap);
     let positionHistory = allHistory[posId] || [];
 
-    // Format the results with robust tenure calculation
     const finalHistory = positionHistory
-      .filter(rec => rec.incumbentId && rec.startDate instanceof Date && !isNaN(rec.startDate)) // Ensure valid start DATE OBJECT from engine
+      .filter(rec => rec.incumbentId)
       .map(rec => {
-        const startDateObj = rec.startDate; // Keep as Date object
-        let endDateObj = rec.endDate instanceof Date && !isNaN(rec.endDate) ? rec.endDate : null; // Keep as Date object or null
-        const overallHireDateObj = rec.overallHireDate instanceof Date && !isNaN(rec.overallHireDate) ? rec.overallHireDate : null; // Keep overall hire date as object too
-
-        // "Present" handling (Same)
+        const startDate = rec.startDate;
+        let endDate = rec.endDate;
         const liveRecord = mainDataMap.get(posId);
-        if (liveRecord && liveRecord.employeeId === rec.incumbentId && !endDateObj) {
-            endDateObj = null; // Confirm it stays null for "Present"
+
+        if (liveRecord && liveRecord.employeeId === rec.incumbentId) {
+            endDate = null;
+        }
+        
+        const endDateForCalc = endDate || new Date();
+
+        let tenureDays = 0;
+        if (startDate && endDateForCalc) {
+          const diffMillis = endDateForCalc.getTime() - startDate.getTime();
+          tenureDays = Math.max(0, Math.floor(diffMillis / (1000 * 60 * 60 * 24)));
         }
 
-        // *** ROBUST TENURE CALCULATION v5 ***
-        let tenureString = "N/A";
-        let tenureDays = 0; // Default to 0 days
-        const endDateForCalc = endDateObj || new Date(); // Use today if endDate is null/invalid
-        const MS_PER_DAY = 1000 * 60 * 60 * 24;
+        let tenureString = "0 days";
+        if (tenureDays > 0) {
+          const years = Math.floor(tenureDays / 365.25);
+          const months = Math.floor((tenureDays % 365.25) / 30.44);
+          const days = Math.round((tenureDays % 365.25) % 30.44);
 
-
-        // Ensure startDateObj is a valid Date before calculating
-        if (startDateObj instanceof Date && !isNaN(startDateObj)) {
-
-            // --- Explicitly log the dates being used ---
-            // Logger.log(`v11/TenureFix v5: Calculating tenure for ${rec.incumbentName} (${posId}). Start Date Obj: ${startDateObj.toISOString()}, End Date Obj used for Calc: ${endDateForCalc.toISOString()}`);
-
-            // Treat dates as UTC to calculate the difference in days without timezone interference
-            const startUTC = Date.UTC(startDateObj.getFullYear(), startDateObj.getMonth(), startDateObj.getDate());
-            const endUTC = Date.UTC(endDateForCalc.getFullYear(), endDateForCalc.getMonth(), endDateForCalc.getDate());
-
-            const diffMillis = endUTC - startUTC;
-
-            if (diffMillis >= 0) {
-                 // Calculate the number of days difference. Add 1 for inclusivity.
-                 tenureDays = Math.floor(diffMillis / MS_PER_DAY) + 1;
-
-                // Logger.log(`v11/TenureFix v5: Pos ${posId}, Emp ${rec.incumbentId}: StartUTC=${startUTC}, EndUTC=${endUTC}, DiffMillis=${diffMillis}, TenureDays=${tenureDays}`);
-
-                // Format tenure string (Years, Months, Days) - Standard breakdown
-                 if (tenureDays > 0) {
-                    const years = Math.floor(tenureDays / 365.25);
-                    const remainingDaysAfterYears = tenureDays - (years * 365.25);
-                    const months = Math.floor(remainingDaysAfterYears / 30.44);
-                    let days = Math.round(remainingDaysAfterYears % 30.44);
-                     days = Math.max(0, days); // Ensure days not negative
-
-                    let parts = [];
-                    if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
-                    if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
-                    // Show days if > 0 OR if it's the only unit (e.g., tenure <= 1 month)
-                    if (days > 0 || (years === 0 && months === 0)) {
-                        // Ensure 1 day is shown correctly
-                         parts.push(`${days} day${days !== 1 ? 's' : ''}`);
-                    }
-
-                    tenureString = parts.join(', ') || (tenureDays === 1 ? "1 day" : "Error"); // Default shouldn't be hit if tenureDays > 0
-                 } else {
-                     tenureString = "0 days"; // If calculation resulted in 0 days
-                 }
-
-
-            } else {
-                 // Logger.log(`WARN v11/TenureFix v5: Pos ${posId}, Emp ${rec.incumbentId}: Negative time difference (${diffMillis}ms). Start: ${startDateObj}, End Calc: ${endDateForCalc}`);
-                 tenureString = "Error"; // Indicate calculation error
-                 tenureDays = 0;
-            }
-        } else {
-             // Logger.log(`WARN v11/TenureFix v5: Pos ${posId}, Emp ${rec.incumbentId}: Invalid startDateObj for tenure calculation.`);
-             tenureString = "Error";
-             tenureDays = 0;
+          let parts = [];
+          if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
+          if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
+          if (days > 0 || (years === 0 && months === 0)) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+          tenureString = parts.join(', ');
         }
-        // *** END ROBUST TENURE CALCULATION v5 ***
-
-        // Return object including raw dates (as ISO strings) for caching
+        
         return {
           name: rec.incumbentName,
-          startDate: startDateObj ? Utilities.formatDate(startDateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : 'N/A',
-          endDate: endDateObj ? Utilities.formatDate(endDateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : 'Present',
+          startDate: rec.startDate ? Utilities.formatDate(rec.startDate, Session.getScriptTimeZone(), 'yyyy-MM-dd') : 'N/A',
+          endDate: endDate ? Utilities.formatDate(endDate, Session.getScriptTimeZone(), 'yyyy-MM-dd') : 'Present',
           tenure: tenureString,
-          employeeHireDate: overallHireDateObj ? Utilities.formatDate(overallHireDateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : 'N/A',
-          rawStartDate: startDateObj ? startDateObj.toISOString() : null,
-          rawEndDate: endDateObj ? endDateObj.toISOString() : null,
-          rawOverallHireDate: overallHireDateObj ? overallHireDateObj.toISOString() : null
+          employeeHireDate: rec.overallHireDate ? Utilities.formatDate(rec.overallHireDate, Session.getScriptTimeZone(), 'yyyy-MM-dd') : 'N/A',
         };
       });
 
-    // Sort by start date ascending (using raw dates)
-    const sortedHistory = finalHistory.sort((a, b) => {
-        const dateA = a.rawStartDate ? new Date(a.rawStartDate).getTime() : 0;
-        const dateB = b.rawStartDate ? new Date(b.rawStartDate).getTime() : 0;
-        return dateA - dateB;
-    });
-
-    // Cache the result (including raw dates)
-    cache.put(cacheKey, JSON.stringify(sortedHistory), 21600);
-    // Logger.log(`v11/TenureFix v5: Successfully calculated and cached history for ${posId}. Count: ${sortedHistory.length}`);
-    return sortedHistory;
+    const reversedHistory = finalHistory.reverse();
+    cache.put(cacheKey, JSON.stringify(reversedHistory), 21600);
+    return reversedHistory;
 
   } catch (e) {
-    Logger.log(`Error in getDetailedIncumbencyHistory (v11/TenureFix v5) for ${posId}: ${e.toString()}\nStack: ${e.stack}`);
-    return []; // Return empty on error
+    Logger.log(`Error in getDetailedIncumbencyHistory: ${e.toString()}\nStack: ${e.stack}`);
+    return [];
   }
 }
 
