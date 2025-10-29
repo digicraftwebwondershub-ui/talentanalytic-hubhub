@@ -1935,20 +1935,12 @@ function calculateIncumbencyEngine(allLogData, headers, mainDataMap) {
       .filter(e => e.eventDate)
       .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
 
-    // --- FIX: Filter out consecutive duplicate events for the same incumbent ---
-    const uniqueChangeEvents = allChangeEventsForPos.filter((event, index, arr) => {
-        if (index === 0) return true; // Always keep the very first event
-        // Keep the event if the incumbent is different from the previous one
-        return event.incumbentId !== arr[index - 1].incumbentId;
-    });
-
-
-    if (uniqueChangeEvents.length === 0) continue;
+    if (allChangeEventsForPos.length === 0) continue;
 
     let historyRecords = [];
     let i = 0;
-    while (i < uniqueChangeEvents.length) {
-      const startEvent = uniqueChangeEvents[i];
+    while (i < allChangeEventsForPos.length) {
+      const startEvent = allChangeEventsForPos[i];
       if (!startEvent.incumbentId) {
         i++;
         continue;
@@ -1958,32 +1950,30 @@ function calculateIncumbencyEngine(allLogData, headers, mainDataMap) {
       const isInternalMovement = ['PROMOTION', 'INTERNAL TRANSFER', 'LATERAL TRANSFER'].includes(startEvent.status);
       const isFirstEvent = isFirstEverEventForEmployee(startEvent.incumbentId, startEvent.eventDate, allLogData);
 
-      if (!isInternalMovement && isFirstEvent && startEvent.overallHireDate && startEvent.overallHireDate.getTime() < startEvent.eventDate.getTime()) {
+      if (!isInternalMovement && startEvent.overallHireDate && startEvent.overallHireDate.getTime() < startEvent.eventDate.getTime()) {
         startDate = startEvent.overallHireDate;
       }
 
       let endDate = null;
-      let tenureEndingEvent = null;
       let nextEventIndex = i + 1;
 
-      for (let j = i + 1; j < uniqueChangeEvents.length; j++) {
-        const nextEvent = uniqueChangeEvents[j];
-        if (nextEvent.incumbentId !== startEvent.incumbentId) {
-          endDate = nextEvent.eventDate;
-          tenureEndingEvent = nextEvent;
-          nextEventIndex = j;
-          break;
-        }
-      }
-
-      if (!endDate) {
-        const liveRecord = mainDataMap.get(posId);
-        if (!liveRecord || liveRecord.employeeId !== startEvent.incumbentId) {
-           endDate = uniqueChangeEvents[uniqueChangeEvents.length - 1].eventDate;
-        }
+      // Find the last event that belongs to the current incumbent's tenure.
+      let lastEventIndexInTenure = i;
+      while (nextEventIndex < allChangeEventsForPos.length && allChangeEventsForPos[nextEventIndex].incumbentId === startEvent.incumbentId) {
+        lastEventIndexInTenure = nextEventIndex;
+        nextEventIndex++;
       }
       
-      const lastKnownEventForIncumbent = uniqueChangeEvents.slice().reverse().find(e => e.incumbentId === startEvent.incumbentId) || startEvent;
+      // The end date is the date of the last event in this tenure.
+      endDate = allChangeEventsForPos[lastEventIndexInTenure].eventDate;
+
+      // If the employee is still the current incumbent in the live data, override the end date.
+      const liveRecord = mainDataMap.get(posId);
+      if (liveRecord && liveRecord.employeeId === startEvent.incumbentId) {
+        endDate = null; // A null endDate means 'Present'.
+      }
+      
+      const lastKnownEventForIncumbent = allChangeEventsForPos.slice().reverse().find(e => e.incumbentId === startEvent.incumbentId) || startEvent;
 
       historyRecords.push({
         startDate: startDate,
