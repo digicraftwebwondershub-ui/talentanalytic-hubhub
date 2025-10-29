@@ -1935,12 +1935,20 @@ function calculateIncumbencyEngine(allLogData, headers, mainDataMap) {
       .filter(e => e.eventDate)
       .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
 
-    if (allChangeEventsForPos.length === 0) continue;
+    // --- FIX: Filter out consecutive duplicate events for the same incumbent ---
+    const uniqueChangeEvents = allChangeEventsForPos.filter((event, index, arr) => {
+        if (index === 0) return true; // Always keep the very first event
+        // Keep the event if the incumbent is different from the previous one
+        return event.incumbentId !== arr[index - 1].incumbentId;
+    });
+
+
+    if (uniqueChangeEvents.length === 0) continue;
 
     let historyRecords = [];
     let i = 0;
-    while (i < allChangeEventsForPos.length) {
-      const startEvent = allChangeEventsForPos[i];
+    while (i < uniqueChangeEvents.length) {
+      const startEvent = uniqueChangeEvents[i];
       if (!startEvent.incumbentId) {
         i++;
         continue;
@@ -1958,8 +1966,8 @@ function calculateIncumbencyEngine(allLogData, headers, mainDataMap) {
       let tenureEndingEvent = null;
       let nextEventIndex = i + 1;
 
-      for (let j = i + 1; j < allChangeEventsForPos.length; j++) {
-        const nextEvent = allChangeEventsForPos[j];
+      for (let j = i + 1; j < uniqueChangeEvents.length; j++) {
+        const nextEvent = uniqueChangeEvents[j];
         if (nextEvent.incumbentId !== startEvent.incumbentId) {
           endDate = nextEvent.eventDate;
           tenureEndingEvent = nextEvent;
@@ -1971,11 +1979,11 @@ function calculateIncumbencyEngine(allLogData, headers, mainDataMap) {
       if (!endDate) {
         const liveRecord = mainDataMap.get(posId);
         if (!liveRecord || liveRecord.employeeId !== startEvent.incumbentId) {
-           endDate = allChangeEventsForPos[allChangeEventsForPos.length - 1].eventDate;
+           endDate = uniqueChangeEvents[uniqueChangeEvents.length - 1].eventDate;
         }
       }
       
-      const lastKnownEventForIncumbent = allChangeEventsForPos.slice().reverse().find(e => e.incumbentId === startEvent.incumbentId) || startEvent;
+      const lastKnownEventForIncumbent = uniqueChangeEvents.slice().reverse().find(e => e.incumbentId === startEvent.incumbentId) || startEvent;
 
       historyRecords.push({
         startDate: startDate,
