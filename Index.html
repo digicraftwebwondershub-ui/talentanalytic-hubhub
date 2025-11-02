@@ -1453,6 +1453,19 @@
 <!-- Predictive View -->
 <div id="predictive-view" class="tab-content">
 
+    <div id="request-details-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="flex justify-between items-center mb-4">
+          <h2 id="request-details-modal-title" class="text-2xl font-bold text-slate-800">Request Details</h2>
+          <button onclick="closeRequestDetailsModal()" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+        </div>
+        <div id="request-details-modal-body" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          </div>
+        <div id="request-details-modal-footer" class="mt-6 flex justify-end gap-3">
+          </div>
+      </div>
+    </div>
+
     <div class="p-4 sm:p-6 bg-white rounded-lg shadow-md">
         <h2 class="text-2xl font-bold text-slate-800 mb-4">Employee Attrition Risk</h2>
         <p class="mb-6 text-sm text-gray-600">This report identifies current employees who may be at a higher risk of leaving, based on historical data. Factors include tenure, department turnover rates, and time since last role change.</p>
@@ -1591,6 +1604,7 @@
   var masterlistFilterState = {};
   var predictiveDataLoaded = false;
   var competencyViewInitialized = false;
+  var changeRequestsDataLoaded = false; // To track if data has been fetched
   var previewChart; // --- NEW PREVIEW VARIABLES ---
   var previewDataTable;
   var currentPreviewZoom = 1.0;
@@ -1769,9 +1783,9 @@ function switchTab(tabId) {
       drawHiringPredictions();
       drawTalentInsights(); // <-- ADD THIS LINE
   } else if (tabId === 'my-requests') {
-    drawMyRequestsTable();
+    loadChangeRequestData(renderMyRequestsTable);
   } else if (tabId === 'approvals') {
-    drawApprovalsTable();
+    loadChangeRequestData(renderApprovalsTable);
   } else if (tabId === 'adoption' && !adoptionDataLoaded) {
       drawAdoptionDashboard();
   } else if (tabId === 'competency' && !competencyViewInitialized) {
@@ -5275,231 +5289,149 @@ function closeDeepDiveModal() {
     document.getElementById('competency-deep-dive-modal').style.display = 'none';
 }
 
-function drawMyRequestsTable() {
-  showSavingOverlay('Loading My Requests...');
-  google.script.run
-    .withSuccessHandler(data => {
-      // *** ADDED CONSOLE LOG ***
-      console.log("Data received for My Requests:", JSON.stringify(data, null, 2)); // Log the raw data received
+function showRequestDetails(requestId, context) {
+  const modal = document.getElementById('request-details-modal');
+  const title = document.getElementById('request-details-modal-title');
+  const body = document.getElementById('request-details-modal-body');
+  const footer = document.getElementById('request-details-modal-footer');
 
-      const table = $('#my-requests-table');
-      if ($.fn.DataTable.isDataTable(table)) {
-        table.DataTable().destroy();
-      }
-      table.empty(); // Clear previous table structure
+  title.textContent = `Details for Request ID: ${requestId}`;
+  body.innerHTML = '<p>Loading...</p>';
+  footer.innerHTML = '';
 
-      // Check if myRequests exists and has data *after* logging
-      if (!data || !data.myRequests || data.myRequests.length === 0) {
-        console.log("No requests found in data object or data.myRequests is empty."); // Log if no data
-        table.html('<thead><tr><th>Info</th></tr></thead><tbody><tr><td>No requests found.</td></tr></tbody>');
-        hideSavingOverlay();
-        return;
-      }
+  const requestData = (context === 'my-requests')
+    ? window.allChangeRequests.myRequests.find(r => r.RequestID == requestId)
+    : window.allChangeRequests.approvals.find(r => r.RequestID == requestId);
 
-      console.log(`Found ${data.myRequests.length} request(s) to display.`); // Log the count being processed
+  if (!requestData) {
+    body.innerHTML = '<p class="text-red-500">Could not find request details.</p>';
+    modal.style.display = 'flex';
+    return;
+  }
 
-      // --- Simplified Column Definition ---
-      // Get headers directly from the first row of the actual data received
-      const headers = Object.keys(data.myRequests[0]);
-      const columns = headers.map(header => {
-          let colDef = { title: header, data: header };
+  let detailsHtml = '';
+  for (const [key, value] of Object.entries(requestData)) {
+    detailsHtml += `<div>
+                      <label class="block font-medium text-gray-500">${key}</label>
+                      <div class="mt-1 p-2 w-full border rounded bg-gray-50 break-words">${value || 'N/A'}</div>
+                    </div>`;
+  }
+  body.innerHTML = detailsHtml;
 
-          // Basic Date/Timestamp formatting (more robust handling can be added back if needed)
-          if (header.includes('Timestamp') || header === 'EffectiveDate') {
-              colDef.render = function(d, type, row) {
-                  if (type === 'display' && d) {
-                      try {
-                          return new Date(d).toLocaleString();
-                      } catch (e) { return d; } // Return original if invalid
-                  }
-                  return d;
-              };
-          }
-          // Basic Link handling
-          else if (header === 'SupportingDocuments') {
-              colDef.render = function(d, type, row) {
-                  if (type === 'display' && d && typeof d === 'string' && d.startsWith('<a')) {
-                      // Ensure target blank, basic version
-                      return d.includes('target="_blank"') ? d : d.replace('<a href', '<a target="_blank" href');
-                  }
-                  return d;
-              }
-          }
-          // Default text rendering for safety
-          else {
-              colDef.render = $.fn.dataTable.render.text();
-          }
-          return colDef;
-      });
-      // --- End Simplified Column Definition ---
+  footer.innerHTML = `<button onclick="closeRequestDetailsModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Close</button>`;
+  
+  if (context === 'approvals' && requestData.Status === 'Pending') {
+    footer.innerHTML = `
+      <button onclick="handleApprovalAction('${requestId}', 'Approved')" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Approve</button>
+      <button onclick="handleApprovalAction('${requestId}', 'Rejected')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Reject</button>
+      <button onclick="handleApprovalAction('${requestId}', 'Returned')" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">Return</button>
+    ` + footer.innerHTML;
+  }
 
-
-      try { // Add try...catch around DataTable initialization
-          table.DataTable({
-            data: data.myRequests, // Use the received data
-            columns: columns,      // Use the dynamically generated columns
-            responsive: false,
-            scrollX: true,
-            dom: 'Bfrtip',
-            buttons: [
-                'colvis', // Standard column visibility button
-                 {
-                    extend: 'pdfHtml5',
-                    text: 'Export PDF',
-                    title: 'My Change Requests',
-                    orientation: 'landscape'
-                 }
-            ],
-            // Add explicit message for empty table *after* initialization attempt
-             language: {
-                 emptyTable: "No data available in table",
-                 zeroRecords: "No matching records found"
-             }
-          });
-          console.log("DataTable initialized successfully."); // Log success
-      } catch (e) {
-         console.error("Error initializing DataTable:", e); // Log any DataTable errors
-         table.html(`<thead><tr><th>Error</th></tr></thead><tbody><tr><td>Error displaying requests: ${e.message}. See console (F12) for details.</td></tr></tbody>`);
-      }
-
-
-      hideSavingOverlay();
-    })
-    .withFailureHandler(err => {
-      hideSavingOverlay();
-      $('#my-requests-table').html(`<thead><tr><th>Error</th></tr></thead><tbody><tr><td>Error loading requests: ${err.message}. Check browser console (F12) and Apps Script logs.</td></tr></tbody>`);
-      console.error("Error loading My Requests:", err); // Log backend error
-    })
-    .getChangeRequests();
+  modal.style.display = 'flex';
 }
 
-function drawApprovalsTable() {
-  showSavingOverlay('Loading Approvals...');
-  google.script.run
-    .withSuccessHandler(data => {
-      const table = $('#approvals-table');
-      if ($.fn.DataTable.isDataTable(table)) {
+function closeRequestDetailsModal() {
+  document.getElementById('request-details-modal').style.display = 'none';
+}
+
+function renderMyRequestsTable() {
+    const requests = window.allChangeRequests ? window.allChangeRequests.myRequests : [];
+    const table = $('#my-requests-table');
+    if ($.fn.DataTable.isDataTable(table)) {
         table.DataTable().destroy();
-      }
-      table.empty();
+    }
+    table.empty();
 
-      if (!data || !data.approvals || data.approvals.length === 0) {
-        table.html('<thead><tr><th>Info</th></tr></thead><tbody><tr><td>No pending approvals.</td></tr></tbody>');
-        hideSavingOverlay();
+    if (!requests || requests.length === 0) {
+        table.html('<thead><tr><th>Info</th></tr></thead><tbody><tr><td>No requests found.</td></tr></tbody>');
         return;
-      }
+    }
 
-      // **Explicitly define columns**
-      const expectedHeaders = [
-          "RequestID", "RequestorEmail", "SubmissionTimestamp", "Status", "RequestType",
-          "ApproverEmail", // Keep this if you want to show who it's assigned to
-          // "ApprovalTimestamp", "ApproverComments", // Often less relevant in the *pending* list
-          "EmployeeID", "EmployeeName", "NewPositionID", "EffectiveDate",
-          "VacantPositionID", "NewEmployeeID", "NewEmployeeName",
-          "NewJobTitle", "NewLevel", "Division", "Group", "Department", "Section", "ReportingToId",
-          "SupportingDocuments", "Justification"
-          // "ImplementerEmail", "ImplementationTimestamp" // Not relevant for pending
-      ];
-
-      const actualHeaders = Object.keys(data.approvals[0]);
-      const columns = expectedHeaders
-        .filter(header => actualHeaders.includes(header)) // Only include headers present in the data
-        .map(header => {
-            let colDef = { title: header, data: header };
-             // --- Date/Timestamp Formatting ---
-             if (header.includes('Timestamp') || header === 'EffectiveDate') {
-                colDef.render = function(data, type, row) {
-                    if (type === 'display' && data) {
-                         try {
-                             // Use toLocaleString for user's local time format
-                             return new Date(data).toLocaleString();
-                         } catch (e) {
-                             return data; // Return original if parsing fails
-                         }
-                    }
-                    return data; // Return raw data for sorting/filtering
-                };
-             }
-             // --- Link Formatting ---
-             else if (header === 'SupportingDocuments') {
-                 colDef.render = function(data, type, row) {
-                    // Make sure it's a link and add target="_blank" if missing
-                    if (type === 'display' && data && typeof data === 'string' && data.startsWith('<a')) {
-                        // Basic check and add target blank
-                        return data.includes('target="_blank"') ? data : data.replace('<a href', '<a target="_blank" href');
-                    }
-                    return data; // Return raw data or non-link content
-                 }
-             }
-             // --- Default Text Rendering ---
-              else {
-                  // Ensure plain text rendering to prevent potential XSS from data
-                   colDef.render = $.fn.dataTable.render.text();
+    table.DataTable({
+        data: requests,
+        columns: [
+            { title: 'Request ID', data: 'RequestID', render: function(data, type, row) {
+                return `<a href="#" class="text-blue-600 hover:underline" onclick="event.preventDefault(); showRequestDetails('${row.RequestID}', 'my-requests')">${data}</a>`;
               }
-            return colDef;
-        });
+            },
+            { title: 'Requestor', data: 'RequestorEmail' },
+            { title: 'Type of Request', data: 'RequestType' },
+            { title: 'Status', data: 'Status' }
+        ],
+        responsive: false,
+        scrollX: true,
+        dom: 'Bfrtip',
+        buttons: ['colvis']
+    });
+}
 
-      // Add the Actions column WITH PREVIEW BUTTON
-      columns.push({
-        title: 'Actions',
-        data: null, // We'll use the whole row object
-        orderable: false,
-        render: function(data, type, row) {
-          const escapedRequestId = String(row.RequestID).replace(/'/g, "\\'");
-          let buttons = `<button onclick="openPreviewModal('${escapedRequestId}')" class="bg-indigo-500 text-white p-1 rounded text-xs mr-1 mb-1 sm:mb-0" title="Preview Change">Preview</button>`;
-          
-          if (row.Status === 'Approved') {
-            buttons += `<button onclick="handleImplementAction('${escapedRequestId}')" class="bg-blue-600 text-white p-1 rounded text-xs" title="Implement Change">Implement</button>`;
-          } else if (row.Status === 'Pending') {
-            buttons += `<button onclick="handleApprovalAction('${escapedRequestId}', 'Approved')" class="bg-green-500 text-white p-1 rounded text-xs mr-1 mb-1 sm:mb-0" title="Approve Request">Approve</button>
-                        <button onclick="handleApprovalAction('${escapedRequestId}', 'Rejected')" class="bg-red-500 text-white p-1 rounded text-xs" title="Reject Request">Reject</button>`;
-          }
-          
-          return buttons;
-        }
-      });
+function renderApprovalsTable() {
+    const requests = window.allChangeRequests ? window.allChangeRequests.approvals : [];
+    const table = $('#approvals-table');
+    if ($.fn.DataTable.isDataTable(table)) {
+        table.DataTable().destroy();
+    }
+    table.empty();
 
-        try { // Add try...catch around DataTable initialization
-            table.DataTable({
-              data: data.approvals,
-              columns: columns,
-              responsive: false,
-              scrollX: true,
-              dom: 'Bfrtip', // Added 'B' for buttons
-              buttons: [
-                  'colvis', // Standard column visibility button
-                   {
-                      extend: 'pdfHtml5',
-                      text: 'Export PDF',
-                      title: 'Pending Approvals',
-                      orientation: 'landscape'
-                   }
-              ],
-               language: {
-                   emptyTable: "No data available in table",
-                   zeroRecords: "No matching records found"
-               }
-               // Removed explicit columnDefs render text, relying on individual renders
-            });
-        } catch (e) {
-           console.error("Error initializing Approvals DataTable:", e);
-           table.html(`<thead><tr><th>Error</th></tr></thead><tbody><tr><td>Error displaying approvals: ${e.message}. See console (F12) for details.</td></tr></tbody>`);
-        }
+    if (!requests || requests.length === 0) {
+        table.html('<thead><tr><th>Info</th></tr></thead><tbody><tr><td>No requests found.</td></tr></tbody>');
+        return;
+    }
 
-      hideSavingOverlay();
-    })
-    .withFailureHandler(err => {
-      hideSavingOverlay();
-      $('#approvals-table').html(`<thead><tr><th>Error</th></tr></thead><tbody><tr><td>Error loading approvals: ${err.message}. Check browser console (F12) and Apps Script logs.</td></tr></tbody>`);
-      console.error("Error loading Approvals:", err);
-    })
-    .getChangeRequests();
+    table.DataTable({
+        data: requests,
+        columns: [
+            { title: 'Request ID', data: 'RequestID', render: function(data, type, row) {
+                return `<a href="#" class="text-blue-600 hover:underline" onclick="event.preventDefault(); showRequestDetails('${row.RequestID}', 'approvals')">${data}</a>`;
+              }
+            },
+            { title: 'Requestor', data: 'RequestorEmail' },
+            { title: 'Type of Request', data: 'RequestType' },
+            { title: 'Status', data: 'Status' }
+        ],
+        responsive: false,
+        scrollX: true,
+        dom: 'Bfrtip',
+        buttons: ['colvis']
+    });
+}
+
+function loadChangeRequestData(callback) {
+    if (changeRequestsDataLoaded) {
+        if (callback) callback();
+        return;
+    }
+
+    showSavingOverlay('Loading Change Requests...');
+    google.script.run
+        .withSuccessHandler(data => {
+            hideSavingOverlay();
+            window.allChangeRequests = data;
+            changeRequestsDataLoaded = true;
+            if (callback) callback();
+        })
+        .withFailureHandler(err => {
+            hideSavingOverlay();
+            $('#my-requests-table').html(`<thead><tr><th>Error</th></tr></thead><tbody><tr><td>Error loading requests: ${err.message}.</td></tr></tbody>`);
+            $('#approvals-table').html(`<thead><tr><th>Error</th></tr></thead><tbody><tr><td>Error loading approvals: ${err.message}.</td></tr></tbody>`);
+        })
+        .getChangeRequests();
 }
 
 function handleApprovalAction(requestId, action) {
-  const comments = prompt(`Please provide comments for this action (${action}):`);
-  if (comments === null) { // User cancelled the prompt
-    return;
+  let comments = '';
+  if (action === 'Returned' || action === 'Rejected') {
+    comments = prompt(`Comments are required for this action (${action}):`);
+    if (comments === null) return;
+    if (!comments.trim()) {
+      alert('You must provide comments to ' + action.toLowerCase() + ' a request.');
+      return;
+    }
+  } else {
+    // For "Approve", comments are optional.
+    comments = prompt(`Please provide optional comments for this action (${action}):`);
+    if (comments === null) return; // User clicked cancel, so we stop.
   }
   
   showSavingOverlay('Processing Action...');
@@ -5507,7 +5439,14 @@ function handleApprovalAction(requestId, action) {
     .withSuccessHandler(response => {
       hideSavingOverlay();
       alert(response);
-      drawApprovalsTable(); // Refresh the table
+      closeRequestDetailsModal();
+      
+      // Force a refresh of the data and redraw the currently active table
+      changeRequestsDataLoaded = false;
+      window.allChangeRequests = null;
+      loadChangeRequestData(renderApprovalsTable); // Redraw the approvals table specifically
+
+      google.script.run.withSuccessHandler(updateNotificationBadges).getRequestCounts();
     })
     .withFailureHandler(err => {
       hideSavingOverlay();
