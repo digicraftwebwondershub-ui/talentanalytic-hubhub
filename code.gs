@@ -288,100 +288,76 @@ function getRequestCounts() {
 }
 
 function getChangeRequests() {
-  // Add a top-level try...catch for broader error capture
   try {
     Logger.log('getChangeRequests function started.');
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('Org Chart Requests');
     if (!sheet || sheet.getLastRow() < 2) {
       Logger.log('Sheet "Org Chart Requests" not found or empty.');
-      // Explicitly return an object with empty arrays if sheet is bad
       return { myRequests: [], approvals: [] };
     }
     const data = sheet.getDataRange().getValues();
     const headers = data.shift();
     const userEmail = Session.getActiveUser().getEmail().toLowerCase().trim();
-    Logger.log('Current User Email (lowercase, trimmed): ' + userEmail);
 
-    const supportDocIndex = headers.indexOf('SupportingDocuments');
-    const requestorEmailIndex = headers.indexOf('RequestorEmail');
-    const approverEmailIndex = headers.indexOf('ApproverEmail');
-    const statusIndex = headers.indexOf('Status');
-
-    if (requestorEmailIndex === -1 || approverEmailIndex === -1 || statusIndex === -1) {
-        Logger.log("Error in getChangeRequests: Missing required columns (RequestorEmail, ApproverEmail, or Status). Header row: " + headers.join(', '));
-        throw new Error("Missing required columns in 'Org Chart Requests' sheet.");
-    }
-
-    let requestCount = 0;
-
+    // First, process all rows into a standardized 'requests' array
     const requests = data.map(row => {
-      const request = {};
+      let request = {};
       headers.forEach((header, i) => {
-        // Handle specific data types before storing
-        if (i === supportDocIndex && row[i]) {
-          request[header] = `<a href="${row[i]}" target="_blank">View Documents</a>`;
-        } else if ((header.includes('Timestamp') || header === 'ApprovalTimestamp') && row[i] instanceof Date) {
-            // Use ISO string for timestamps for reliable transfer
-            request[header] = row[i].toISOString();
-        } else if (header === 'EffectiveDate' && row[i] instanceof Date) {
-             // Format effective date as YYYY-MM-DD
-             request[header] = Utilities.formatDate(row[i], Session.getScriptTimeZone(), 'yyyy-MM-dd');
+        let value = row[i];
+        // Standardize date formats upfront
+        if (header.toLowerCase().includes('date') && value instanceof Date) {
+            value = Utilities.formatDate(new Date(value), Session.getScriptTimeZone(), "yyyy-MM-dd");
         }
-         else {
-          // Store other values as they are (likely strings or numbers)
-          request[header] = row[i];
-        }
+        request[header.replace(/\s+/g, '')] = value;
       });
-      requestCount++;
-      // const rowEmail = (request.RequestorEmail || '').toString().toLowerCase().trim(); // Keep commented out for now
-      // Logger.log(`Row ${requestCount}: Read RequestorEmail: '${rowEmail}'`);
       return request;
     });
 
-    Logger.log(`Total requests processed before filtering: ${requestCount}`);
-
-    const myRequests = requests.filter(r =>
-        (r.RequestorEmail || '').toString().toLowerCase().trim() === userEmail
+    // Filter for 'My Requests'
+    const myRequests = requests.filter(r => 
+      (r.RequestorEmail || '').toString().toLowerCase().trim() === userEmail
     );
 
+    // Filter for 'Approvals' - now keeps 'Approved' and 'Implemented'
     const approvals = requests.filter(r => {
         const status = (r.Status || '').toString().toLowerCase().trim();
-        return (status === 'pending' || status === 'approved' || status === 'implemented') &&
+        // The approver should see requests they need to act on, and ones they have already acted upon.
+        return (status === 'pending' || status === 'approved' || status === 'rejected' || status === 'returned' || status === 'implemented') && 
                (r.ApproverEmail || '').toString().toLowerCase().trim() === userEmail;
     });
 
-    Logger.log(`Number of requests matched for 'My Requests': ${myRequests.length}`);
-    Logger.log(`Number of requests matched for 'Approvals': ${approvals.length}`);
-
-
+    // Sort both lists by submission timestamp, newest first
     const sortByTimestampDesc = (a, b) => {
-        // Compare ISO strings directly
-        const dateA = a.SubmissionTimestamp || '1970-01-01T00:00:00.000Z';
-        const dateB = b.SubmissionTimestamp || '1970-01-01T00:00:00.000Z';
-        // Simple string comparison works for ISO dates (descending)
-        if (dateB < dateA) return -1;
-        if (dateB > dateA) return 1;
-        return 0;
+        const dateA = new Date(a.SubmissionTimestamp || 0);
+        const dateB = new Date(b.SubmissionTimestamp || 0);
+        return dateB - dateA;
     };
 
     myRequests.sort(sortByTimestampDesc);
     approvals.sort(sortByTimestampDesc);
 
-    const resultObject = { myRequests, approvals }; // Create the object to return
-
-    // *** ADD LOGGING BEFORE RETURN ***
-    // Use JSON.stringify for a clear view of the structure and types being returned
-    Logger.log('Object structure being returned: ' + JSON.stringify(resultObject, null, 2));
-
-    Logger.log('getChangeRequests function finished successfully.');
-    return resultObject; // Return the object
+    // Create the final object with formatted link fields for the frontend
+    const resultObject = {
+        myRequests: myRequests.map(r => ({
+            ...r,
+            JiraTicket: r.JiraTicket ? `<a href="${r.JiraTicket}" target="_blank">${r.JiraTicket.substring(r.JiraTicket.lastIndexOf('/') + 1)}</a>` : 'N/A',
+            SupportingDocuments: r.SupportingDocuments ? `<a href="${r.SupportingDocuments}" target="_blank">View</a>` : 'N/A'
+        })),
+        approvals: approvals.map(r => ({
+            ...r,
+            JiraTicket: r.JiraTicket ? `<a href="${r.JiraTicket}" target="_blank">${r.JiraTicket.substring(r.JiraTicket.lastIndexOf('/') + 1)}</a>` : 'N/A',
+            SupportingDocuments: r.SupportingDocuments ? `<a href="${r.SupportingDocuments}" target="_blank">View</a>` : 'N/A'
+        }))
+    };
+    
+    Logger.log('getChangeRequests function finished successfully. Found ' + myRequests.length + ' myRequests and ' + approvals.length + ' approvals.');
+    return resultObject;
 
   } catch (e) {
-    // *** Log errors from the TOP-LEVEL try...catch ***
-    Logger.log('FATAL Error in getChangeRequests (outer catch): ' + e.message + ' Stack: ' + e.stack);
-    // Explicitly return null to mimic potential implicit behavior on unhandled errors
-    return null;
+    Logger.log('FATAL Error in getChangeRequests: ' + e.message + ' Stack: ' + e.stack);
+    // Return a valid empty object on error to prevent frontend from breaking
+    return { myRequests: [], approvals: [] };
   }
 }
 
