@@ -294,7 +294,7 @@ function getChangeRequests() {
     const sheet = ss.getSheetByName('Org Chart Requests');
     if (!sheet || sheet.getLastRow() < 2) {
       Logger.log('Sheet "Org Chart Requests" not found or empty.');
-      return { myRequests: [], approvals: [] };
+      return JSON.stringify({ myRequests: [], approvals: [] });
     }
     const data = sheet.getDataRange().getValues();
     const headers = data.shift();
@@ -319,13 +319,9 @@ function getChangeRequests() {
       (r.RequestorEmail || '').toString().toLowerCase().trim() === userEmail
     );
 
-    // Filter for 'Approvals' - now keeps 'Approved' and 'Implemented'
-    const approvals = requests.filter(r => {
-        const status = (r.Status || '').toString().toLowerCase().trim();
-        // The approver should see requests they need to act on, and ones they have already acted upon.
-        return (status === 'pending' || status === 'approved' || status === 'rejected' || status === 'returned' || status === 'implemented') && 
-               (r.ApproverEmail || '').toString().toLowerCase().trim() === userEmail;
-    });
+    const approvals = requests.filter(r => 
+      (r.ApproverEmail || '').toString().toLowerCase().trim() === userEmail
+    );
 
     // Sort both lists by submission timestamp, newest first
     const sortByTimestampDesc = (a, b) => {
@@ -352,7 +348,7 @@ function getChangeRequests() {
     };
     
     Logger.log('getChangeRequests function finished successfully. Found ' + myRequests.length + ' myRequests and ' + approvals.length + ' approvals.');
-    return resultObject;
+    return JSON.stringify(resultObject);
 
   } catch (e) {
     Logger.log('FATAL Error in getChangeRequests: ' + e.message + ' Stack: ' + e.stack);
@@ -3423,6 +3419,9 @@ function submitChangeRequest(requestData) {
     if (requestData.files && requestData.files.length > 0) {
       const parentFolder = DriveApp.getFolderById(CHANGE_REQUESTS_FOLDER_ID);
       const requestFolder = parentFolder.createFolder(requestId);
+
+      // --- FIX: Set sharing permissions to anyone with the link can view ---
+      requestFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       
       requestData.files.forEach(file => {
         const decodedContent = Utilities.base64Decode(file.content);
@@ -3971,21 +3970,17 @@ function getPreviewOrgChartData(requestId) {
       const newPosition = previewObjects.find(p => p.positionid === newPositionId);
 
       if (oldPosition) {
-        // oldPosition.employeeid = ''; // DO NOT CLEAR - This was the bug
-        // oldPosition.employeename = ''; // DO NOT CLEAR - This was the bug
-        // oldPosition.status = 'VACANT'; // DO NOT CHANGE STATUS
         oldPosition.isPreviewChange = true;
         oldPosition.changeType = 'VACATED BY ' + employeeName;
         changedPositionIds.add(oldPosition.positionid);
       }
 
       if (newPosition) {
-        newPosition.employeeid = employeeId;
-        newPosition.employeename = employeeName;
-        newPosition.status = requestType.toUpperCase();
+        // We don't copy the employee data to the destination for the preview.
+        // Instead, we just mark it as the destination for highlighting purposes.
+        // This shows the user the current state of the destination (e.g., VACANT).
         newPosition.isPreviewChange = true;
-        newPosition.changeType = requestType.toUpperCase() + ' - ' + employeeName;
-        newPosition.effectiveDate = effectiveDate ? Utilities.formatDate(new Date(effectiveDate), Session.getScriptTimeZone(), 'yyyy-MM-dd') : null;
+        newPosition.changeType = 'DESTINATION FOR ' + employeeName;
         changedPositionIds.add(newPosition.positionid);
       } else {
         Logger.log(`Warning: New position ${newPositionId} not found during preview generation.`);
