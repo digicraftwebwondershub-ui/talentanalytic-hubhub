@@ -4032,35 +4032,41 @@ function getPreviewOrgChartData(requestId) {
       changedPositionIds.add(tempNewPositionId);
     }
     
-    // --- START: NEW HIERARCHY REBUILD LOGIC ---
+    // --- START: MODIFIED HIERARCHY REBUILD LOGIC ---
     // After simulating changes, the reporting structure might be broken.
     // We need to rebuild the managerId links based on the new state of previewObjects.
     const newEmployeeIdToPositionIdMap = new Map();
+    const allPositionIds = new Set(); // For efficient lookup
     previewObjects.forEach(p => {
       if (p.employeeid) {
         newEmployeeIdToPositionIdMap.set(String(p.employeeid).trim(), p.positionid);
       }
+      if (p.positionid) {
+        allPositionIds.add(String(p.positionid).trim());
+      }
     });
 
     previewObjects.forEach(p => {
-      const managerEmployeeId = (p.reportingtoid || '').toString().trim();
-      if (managerEmployeeId) {
-        // Find the manager's NEW position ID from our fresh map
-        const newManagerPositionId = newEmployeeIdToPositionIdMap.get(managerEmployeeId);
+      const reportingToValue = (p.reportingtoid || '').toString().trim();
+      if (reportingToValue) {
+        // First, try to resolve as an Employee ID
+        const newManagerPositionId = newEmployeeIdToPositionIdMap.get(reportingToValue);
         if (newManagerPositionId) {
           p.managerId = newManagerPositionId;
+        } else if (allPositionIds.has(reportingToValue)) {
+          // Fallback: Check if the reportingtoid is a valid Position ID (for vacant managers)
+          p.managerId = reportingToValue;
         } else {
-          // If the manager ID points to an employee who no longer exists in a position
-          // (e.g., they were the one transferred out), this link should be broken.
+          // If it's neither a valid employee ID nor a valid position ID, break the link.
           p.managerId = ''; 
-          Logger.log(`Preview Warning: Could not find new position for manager with Employee ID ${managerEmployeeId}. Breaking link for ${p.positionid}.`);
+          Logger.log(`Preview Warning: Could not resolve reportingtoid "${reportingToValue}" for position ${p.positionid}.`);
         }
       } else {
-        // No manager employee ID, so no manager link.
+        // No reportingtoid, so no manager link.
         p.managerId = '';
       }
     });
-    // --- END: NEW HIERARCHY REBUILD LOGIC ---
+    // --- END: MODIFIED HIERARCHY REBUILD LOGIC ---
 
     // --- FINAL DATA SANITIZATION ---
     // Ensure all objects in the array are clean for JSON serialization, especially dates.
