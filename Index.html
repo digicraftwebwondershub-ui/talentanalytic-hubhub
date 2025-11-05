@@ -4809,7 +4809,7 @@ function handleRequestTypeChange() {
         document.getElementById('request-level').value = position.level || '';
         document.getElementById('request-contract-type').value = position.contractType || '';
         document.getElementById('request-position-status').value = position.positionStatus || '';
-
+        
         // --- REVISED BLOCK ---
         // Call the backend to get the last incumbent's info, which includes the vacancy date
         google.script.run
