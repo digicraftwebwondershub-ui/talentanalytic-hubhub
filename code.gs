@@ -170,8 +170,6 @@ function implementApprovedChange(requestId) {
           logToSheet('Processing Replacement for Vacancy logic.');
           dataToSave = {
             positionid: rowData[headerMap.get('VacantPositionID')],
-            employeeid: rowData[headerMap.get('NewEmployeeID')],
-            employeename: rowData[headerMap.get('NewEmployeeName')],
             status: 'FILLED VACANCY',
             startdateinposition: rowData[headerMap.get('EffectiveDate')]
           };
@@ -195,9 +193,10 @@ function implementApprovedChange(requestId) {
             department: rowData[headerMap.get('Department')],
             section: section,
             reportingtoid: rowData[headerMap.get('ReportingToId')],
-            status: 'NEW HIRE',
-            employeename: rowData[headerMap.get('NewEmployeeName')],
-            employeeid: rowData[headerMap.get('NewEmployeeID')],
+            reportingto: rowData[headerMap.get('ReportingTo')],
+            status: 'VACANT',
+            employeename: '',
+            employeeid: '',
           };
           mode = 'add';
         }
@@ -394,6 +393,48 @@ function getEmployeeDetails(employeeName) {
   } catch (e) {
     Logger.log(`Error in getEmployeeDetails: ${e.toString()}`);
     return null;
+  }
+}
+
+
+function getLastIncumbentInfo(positionId) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const logSheet = ss.getSheetByName('change_log_sheet');
+    if (!logSheet || logSheet.getLastRow() < 2) {
+      return { dateBecameVacant: null };
+    }
+
+    const logData = logSheet.getDataRange().getValues();
+    const headers = logData.shift();
+    const posIdIndex = headers.indexOf('Position ID');
+    const empIdIndex = headers.indexOf('Employee ID');
+    const effectiveDateIndex = headers.indexOf('Effective Date');
+    const timestampIndex = headers.indexOf('Change Timestamp');
+
+    if (posIdIndex === -1 || empIdIndex === -1 || effectiveDateIndex === -1 || timestampIndex === -1) {
+      return { dateBecameVacant: null };
+    }
+
+    const relevantEvents = logData
+      .filter(row => row[posIdIndex] === positionId && row[empIdIndex]) // Find all events for this position with an incumbent
+      .map(row => new Date(row[effectiveDateIndex] || row[timestampIndex])) // Get the date
+      .filter(date => !isNaN(date.getTime())); // Filter out invalid dates
+
+    if (relevantEvents.length === 0) {
+      return { dateBecameVacant: null };
+    }
+
+    // Sort descending to get the most recent date
+    relevantEvents.sort((a, b) => b.getTime() - a.getTime());
+
+    const lastDate = Utilities.formatDate(relevantEvents[0], Session.getScriptTimeZone(), 'yyyy-MM-dd');
+
+    return { dateBecameVacant: lastDate };
+
+  } catch (e) {
+    Logger.log(`Error in getLastIncumbentInfo: ${e.toString()}`);
+    return { dateBecameVacant: null };
   }
 }
 
@@ -3433,6 +3474,11 @@ function submitChangeRequest(requestData) {
     }
 
     const newRow = headers.map(header => {
+      // For "Hiring of a new employee (replacement for vacancy)", clear these fields
+      if (requestData.RequestType === 'Hiring of a new employee (replacement for vacancy)' && (header === 'NewEmployeeName' || header === 'NewEmployeeID')) {
+        return '';
+      }
+
       switch (header) {
         case 'RequestID':
           return requestId;
@@ -4032,41 +4078,40 @@ function getPreviewOrgChartData(requestId) {
       changedPositionIds.add(tempNewPositionId);
     }
     
-    // --- START: MODIFIED HIERARCHY REBUILD LOGIC ---
+    // --- START: NEW HIERARCHY REBUILD LOGIC ---
     // After simulating changes, the reporting structure might be broken.
     // We need to rebuild the managerId links based on the new state of previewObjects.
     const newEmployeeIdToPositionIdMap = new Map();
-    const allPositionIds = new Set(); // For efficient lookup
     previewObjects.forEach(p => {
       if (p.employeeid) {
         newEmployeeIdToPositionIdMap.set(String(p.employeeid).trim(), p.positionid);
-      }
-      if (p.positionid) {
-        allPositionIds.add(String(p.positionid).trim());
       }
     });
 
     previewObjects.forEach(p => {
       const reportingToValue = (p.reportingtoid || '').toString().trim();
       if (reportingToValue) {
-        // First, try to resolve as an Employee ID
-        const newManagerPositionId = newEmployeeIdToPositionIdMap.get(reportingToValue);
-        if (newManagerPositionId) {
-          p.managerId = newManagerPositionId;
-        } else if (allPositionIds.has(reportingToValue)) {
-          // Fallback: Check if the reportingtoid is a valid Position ID (for vacant managers)
+        // Check if the ID is a Position ID (contains '-') or an Employee ID.
+        if (reportingToValue.includes('-')) {
+          // It's a Position ID (for a vacant manager), use it directly.
           p.managerId = reportingToValue;
         } else {
-          // If it's neither a valid employee ID nor a valid position ID, break the link.
-          p.managerId = ''; 
-          Logger.log(`Preview Warning: Could not resolve reportingtoid "${reportingToValue}" for position ${p.positionid}.`);
+          // It's an Employee ID, look up their new position in the map.
+          const newManagerPositionId = newEmployeeIdToPositionIdMap.get(reportingToValue);
+          if (newManagerPositionId) {
+            p.managerId = newManagerPositionId;
+          } else {
+            // The manager (by employee ID) doesn't exist or isn't in a position in this preview.
+            p.managerId = '';
+            Logger.log(`Preview Warning: Could not find new position for manager with Employee ID ${reportingToValue}. Breaking link for ${p.positionid}.`);
+          }
         }
       } else {
-        // No reportingtoid, so no manager link.
+        // No reporting ID, so no manager link.
         p.managerId = '';
       }
     });
-    // --- END: MODIFIED HIERARCHY REBUILD LOGIC ---
+    // --- END: NEW HIERARCHY REBUILD LOGIC ---
 
     // --- FINAL DATA SANITIZATION ---
     // Ensure all objects in the array are clean for JSON serialization, especially dates.

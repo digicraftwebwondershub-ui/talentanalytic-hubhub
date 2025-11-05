@@ -4714,9 +4714,7 @@ function handleRequestTypeChange() {
 
         <div class="md:col-span-2"><hr class="my-2"></div>
 
-        <div><label class="block font-medium">New Employee Name</label><input type="text" id="new-employee-name" name="NewEmployeeName" class="mt-1 p-2 w-full border rounded"></div>
-        <div><label class="block font-medium">New Employee ID</label><input type="text" id="new-employee-id" name="NewEmployeeID" class="mt-1 p-2 w-full border rounded"></div>
-        <div><label class="block font-medium">Effective Date</label><input type="date" id="effective-date-request" name="EffectiveDate" class="mt-1 p-2 w-full border rounded"></div>
+        <div><label class="block font-medium">Effective Date</label><input type="date" id="effective-date-request" name="EffectiveDate" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
         
         <div class="md:col-span-2"><label class="block font-medium">Justification</label><textarea id="justification" name="Justification" class="mt-1 p-2 w-full border rounded"></textarea></div>
         ${fileUploadHtml}
@@ -4811,6 +4809,19 @@ function handleRequestTypeChange() {
         document.getElementById('request-level').value = position.level || '';
         document.getElementById('request-contract-type').value = position.contractType || '';
         document.getElementById('request-position-status').value = position.positionStatus || '';
+
+        // --- REVISED BLOCK ---
+        // Call the backend to get the last incumbent's info, which includes the vacancy date
+        google.script.run
+          .withSuccessHandler(info => {
+            if (info && info.dateBecameVacant) {
+              document.getElementById('effective-date-request').value = info.dateBecameVacant;
+            } else {
+              document.getElementById('effective-date-request').value = '';
+            }
+          })
+          .getLastIncumbentInfo(positionId);
+
       } else {
         // Clear fields if no position is found
         document.getElementById('request-job-title').value = '';
@@ -4892,6 +4903,7 @@ function submitRequest() {
       Department: document.querySelector('#request-department-dropdown .searchable-dropdown-input')?.value,
       Section: document.querySelector('#request-section-dropdown .searchable-dropdown-input')?.value,
       ReportingToId: document.getElementById('reporting-to-id-request')?.value,
+      ReportingTo: document.querySelector('#reporting-to-request-dropdown .searchable-dropdown-input')?.value,
       PositionStatus: document.querySelector('#position-status-request-dropdown .searchable-dropdown-input')?.value,
 
       // Replacement fields
@@ -5388,7 +5400,7 @@ function showRequestDetails(requestId, context) {
       <button onclick="handleApprovalAction('${requestId}', 'Rejected')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Reject</button>
       <button onclick="handleApprovalAction('${requestId}', 'Returned')" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">Return</button>
     ` + footer.innerHTML;
-  } else if (context === 'approvals' && requestData.Status === 'Approved' && userCanApprove) {
+  } else if (context === 'approvals' && requestData.Status === 'Approved' && userCanApprove && requestData.RequestType !== 'Hiring of a new employee (replacement for vacancy)') {
     footer.innerHTML = `
       <button onclick="openPreviewModal('${requestId}')" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Preview Change</button>
       <button onclick="handleImplementAction('${requestId}')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Implement Change</button>
