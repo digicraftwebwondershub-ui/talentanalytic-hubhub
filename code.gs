@@ -3903,6 +3903,62 @@ function getCompetencyAnalytics(employeeId) {
  * Gets the org chart data as it would look *if* a specific change request were applied.
  * Does NOT save any changes to the main sheet.
  * @param {string} requestId The ID of the change request to preview.
+ * Gets the departure date of the last incumbent for a given position.
+ * @param {string} positionId The ID of the position to check.
+ * @returns {string} The departure date in "yyyy-MM-dd" format, or a status message if not found.
+ */
+function getLastIncumbentInfo(positionId) {
+  if (!positionId) {
+    return "N/A";
+  }
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const logSheet = ss.getSheetByName('change_log_sheet');
+    if (!logSheet || logSheet.getLastRow() < 2) {
+      return "No incumbent history found.";
+    }
+
+    const logData = logSheet.getDataRange().getValues();
+    const headers = logData.shift(); // Remove header row
+    const posIdIndex = headers.indexOf('Position ID');
+    const empIdIndex = headers.indexOf('Employee ID');
+    const effectiveDateIndex = headers.indexOf('Effective Date');
+    const timestampIndex = headers.indexOf('Change Timestamp');
+
+    if ([posIdIndex, empIdIndex, effectiveDateIndex, timestampIndex].includes(-1)) {
+      return "Log sheet columns are not correctly configured.";
+    }
+
+    // 1. Get all events for the position that had an incumbent
+    const incumbentEvents = logData
+      .filter(row =>
+        row[posIdIndex] === positionId &&
+        (row[empIdIndex] || '').toString().trim() !== ''
+      )
+      .map(row => {
+        // Prioritize Effective Date, fall back to Timestamp
+        const date = row[effectiveDateIndex] instanceof Date ? row[effectiveDateIndex] : new Date(row[timestampIndex]);
+        return date;
+      })
+      .filter(date => !isNaN(date.getTime())); // Filter out invalid dates
+
+    if (incumbentEvents.length === 0) {
+      return "No prior incumbent recorded for this position.";
+    }
+
+    // 2. Sort descending to get the most recent date
+    incumbentEvents.sort((a, b) => b.getTime() - a.getTime());
+
+    // 3. Return the most recent date in yyyy-MM-dd format
+    return Utilities.formatDate(incumbentEvents[0], Session.getScriptTimeZone(), 'yyyy-MM-dd');
+
+  } catch (e) {
+    Logger.log(`Error in getLastIncumbentInfo for Position ID ${positionId}: ${e.toString()}`);
+    return "Error retrieving last incumbent date.";
+  }
+}
+
+/**
  * @returns {Array<Object>} An array of employee/position objects representing the preview state.
  * @throws {Error} If the request ID is not found or simulation fails.
  */
@@ -4032,41 +4088,35 @@ function getPreviewOrgChartData(requestId) {
       changedPositionIds.add(tempNewPositionId);
     }
     
-    // --- START: MODIFIED HIERARCHY REBUILD LOGIC ---
+    // --- START: NEW HIERARCHY REBUILD LOGIC ---
     // After simulating changes, the reporting structure might be broken.
     // We need to rebuild the managerId links based on the new state of previewObjects.
     const newEmployeeIdToPositionIdMap = new Map();
-    const allPositionIds = new Set(); // For efficient lookup
     previewObjects.forEach(p => {
       if (p.employeeid) {
         newEmployeeIdToPositionIdMap.set(String(p.employeeid).trim(), p.positionid);
       }
-      if (p.positionid) {
-        allPositionIds.add(String(p.positionid).trim());
-      }
     });
 
     previewObjects.forEach(p => {
-      const reportingToValue = (p.reportingtoid || '').toString().trim();
-      if (reportingToValue) {
-        // First, try to resolve as an Employee ID
-        const newManagerPositionId = newEmployeeIdToPositionIdMap.get(reportingToValue);
+      const managerEmployeeId = (p.reportingtoid || '').toString().trim();
+      if (managerEmployeeId) {
+        // Find the manager's NEW position ID from our fresh map
+        const newManagerPositionId = newEmployeeIdToPositionIdMap.get(managerEmployeeId);
         if (newManagerPositionId) {
           p.managerId = newManagerPositionId;
-        } else if (allPositionIds.has(reportingToValue)) {
-          // Fallback: Check if the reportingtoid is a valid Position ID (for vacant managers)
-          p.managerId = reportingToValue;
         } else {
-          // If it's neither a valid employee ID nor a valid position ID, break the link.
+          // If the manager ID points to an employee who no longer exists in a position
+          // (e.g., they were the one transferred out), this link should be broken.
           p.managerId = ''; 
-          Logger.log(`Preview Warning: Could not resolve reportingtoid "${reportingToValue}" for position ${p.positionid}.`);
+          Logger.log(`Preview Warning: Could not find new position for manager with Employee ID ${managerEmployeeId}. Breaking link for ${p.positionid}.`);
         }
       } else {
-        // No reportingtoid, so no manager link.
+        // No manager employee ID, so no manager link.
         p.managerId = '';
       }
     });
-    // --- END: MODIFIED HIERARCHY REBUILD LOGIC ---
+    // --- END: NEW HIERARCHY REBUILD LOGIC ---
 
     // --- FINAL DATA SANITIZATION ---
     // Ensure all objects in the array are clean for JSON serialization, especially dates.
