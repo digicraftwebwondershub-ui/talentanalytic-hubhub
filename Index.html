@@ -4797,35 +4797,57 @@ function handleRequestTypeChange() {
     createSearchableDropdown('request-section-dropdown', [], null, null, null);
   }
   if (requestType.includes('replacement')) {
-    const vacantPositions = fullEmployeeData.filter(p => !p.employeeId).map(p => p.positionId);
-    createSearchableDropdown('vacant-position-dropdown', vacantPositions, null, null, (positionId) => {
-      const position = fullEmployeeData.find(p => p.positionId === positionId);
-      if (position) {
-        document.getElementById('request-job-title').value = position.jobTitle || '';
-        document.getElementById('request-reporting-to').value = position.managerName || '';
-        document.getElementById('request-reporting-to-id').value = position.managerId || '';
-        document.getElementById('request-division').value = position.division || '';
-        document.getElementById('request-group').value = position.group || '';
-        document.getElementById('request-department').value = position.department || '';
-        document.getElementById('request-section').value = position.section || '';
-        document.getElementById('request-level').value = position.level || '';
-        document.getElementById('request-contract-type').value = position.contractType || '';
-        document.getElementById('request-position-status').value = position.positionStatus || '';
-      } else {
-        // Clear fields if no position is found
-        document.getElementById('request-job-title').value = '';
-        document.getElementById('request-reporting-to').value = '';
-        document.getElementById('request-reporting-to-id').value = '';
-        document.getElementById('request-division').value = '';
-        document.getElementById('request-group').value = '';
-        document.getElementById('request-department').value = '';
-        document.getElementById('request-section').value = '';
-        document.getElementById('request-level').value = '';
-        document.getElementById('request-contract-type').value = '';
-        document.getElementById('request-position-status').value = '';
-      }
-    });
-  }
+        // --- START: MODIFIED LOGIC ---
+        // Hide the unnecessary fields
+        const nameField = document.getElementById('new-employee-name');
+        const idField = document.getElementById('new-employee-id');
+        if (nameField) nameField.parentElement.style.display = 'none';
+        if (idField) idField.parentElement.style.display = 'none';
+
+        const vacantPositions = fullEmployeeData.filter(p => !p.employeeId).map(p => p.positionId);
+        createSearchableDropdown('vacant-position-dropdown', vacantPositions, null, null, (positionId) => {
+            const position = fullEmployeeData.find(p => p.positionId === positionId);
+            const effectiveDateInput = document.getElementById('effective-date-request');
+
+            if (position) {
+                document.getElementById('request-job-title').value = position.jobTitle || '';
+                document.getElementById('request-reporting-to').value = position.managerName || '';
+                document.getElementById('request-reporting-to-id').value = position.managerId || '';
+                document.getElementById('request-division').value = position.division || '';
+                document.getElementById('request-group').value = position.group || '';
+                document.getElementById('request-department').value = position.department || '';
+                document.getElementById('request-section').value = position.section || '';
+                document.getElementById('request-level').value = position.level || '';
+                document.getElementById('request-contract-type').value = position.contractType || '';
+                document.getElementById('request-position-status').value = position.positionStatus || '';
+
+                // Auto-populate effective date
+                effectiveDateInput.value = 'Fetching...';
+                effectiveDateInput.readOnly = true;
+                effectiveDateInput.classList.add('bg-gray-100');
+                google.script.run
+                    .withSuccessHandler(date => {
+                        effectiveDateInput.value = date || '';
+                    })
+                    .withFailureHandler(err => {
+                        effectiveDateInput.value = 'Error fetching date';
+                        console.error("Error fetching last incumbent date:", err);
+                    })
+                    .getLastIncumbentInfo(positionId);
+
+            } else {
+                // Clear all fields if no position is selected
+                ['request-job-title', 'request-reporting-to', 'request-reporting-to-id', 'request-division', 'request-group', 'request-department', 'request-section', 'request-level', 'request-contract-type', 'request-position-status', 'effective-date-request']
+                .forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
+                effectiveDateInput.readOnly = false;
+                effectiveDateInput.classList.remove('bg-gray-100');
+            }
+        });
+        // --- END: MODIFIED LOGIC ---
+    }
 }
 
 function submitRequest() {
@@ -5389,10 +5411,13 @@ function showRequestDetails(requestId, context) {
       <button onclick="handleApprovalAction('${requestId}', 'Returned')" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">Return</button>
     ` + footer.innerHTML;
   } else if (context === 'approvals' && requestData.Status === 'Approved' && userCanApprove) {
-    footer.innerHTML = `
-      <button onclick="openPreviewModal('${requestId}')" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Preview Change</button>
-      <button onclick="handleImplementAction('${requestId}')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Implement Change</button>
-    ` + footer.innerHTML;
+    const isReplacementRequest = requestData.RequestType && requestData.RequestType.includes('replacement for vacancy');
+    if (!isReplacementRequest) {
+      footer.innerHTML = `
+        <button onclick="openPreviewModal('${requestId}')" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Preview Change</button>
+        <button onclick="handleImplementAction('${requestId}')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Implement Change</button>
+      ` + footer.innerHTML;
+    }
   }
 
   modal.style.display = 'flex';
