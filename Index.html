@@ -3403,7 +3403,7 @@ function renderNotifications(data) {
   function setupPageEventListeners() {
     document.getElementById('reset-filters-btn').addEventListener('click', resetFilters);
     document.getElementById('show-inactive-checkbox').addEventListener('change', updateUI);
-
+    
     // Add event listeners for the new refresh buttons
     document.getElementById('refresh-my-requests').addEventListener('click', refreshChangeRequestData);
     document.getElementById('refresh-approvals').addEventListener('click', refreshChangeRequestData);
@@ -5515,7 +5515,7 @@ function loadChangeRequestData(callback) {
 
 function refreshChangeRequestData() {
   changeRequestsDataLoaded = false; // Invalidate the cache
-
+  
   // Determine which tab is currently active to decide which table to redraw
   const myRequestsTabActive = document.getElementById('my-requests-view').classList.contains('active');
   const approvalsTabActive = document.getElementById('approvals-view').classList.contains('active');
@@ -5525,7 +5525,7 @@ function refreshChangeRequestData() {
   } else if (approvalsTabActive) {
     loadChangeRequestData(renderApprovalsTable);
   }
-
+  
   // Also refresh the notification badges
   google.script.run.withSuccessHandler(updateNotificationBadges).getRequestCounts();
 }
