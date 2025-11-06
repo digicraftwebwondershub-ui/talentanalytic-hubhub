@@ -3949,62 +3949,6 @@ function getCompetencyAnalytics(employeeId) {
  * Gets the org chart data as it would look *if* a specific change request were applied.
  * Does NOT save any changes to the main sheet.
  * @param {string} requestId The ID of the change request to preview.
- * Gets the departure date of the last incumbent for a given position.
- * @param {string} positionId The ID of the position to check.
- * @returns {string} The departure date in "yyyy-MM-dd" format, or a status message if not found.
- */
-function getLastIncumbentInfo(positionId) {
-  if (!positionId) {
-    return "N/A";
-  }
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const logSheet = ss.getSheetByName('change_log_sheet');
-    if (!logSheet || logSheet.getLastRow() < 2) {
-      return "No incumbent history found.";
-    }
-
-    const logData = logSheet.getDataRange().getValues();
-    const headers = logData.shift(); // Remove header row
-    const posIdIndex = headers.indexOf('Position ID');
-    const empIdIndex = headers.indexOf('Employee ID');
-    const effectiveDateIndex = headers.indexOf('Effective Date');
-    const timestampIndex = headers.indexOf('Change Timestamp');
-
-    if ([posIdIndex, empIdIndex, effectiveDateIndex, timestampIndex].includes(-1)) {
-      return "Log sheet columns are not correctly configured.";
-    }
-
-    // 1. Get all events for the position that had an incumbent
-    const incumbentEvents = logData
-      .filter(row =>
-        row[posIdIndex] === positionId &&
-        (row[empIdIndex] || '').toString().trim() !== ''
-      )
-      .map(row => {
-        // Prioritize Effective Date, fall back to Timestamp
-        const date = row[effectiveDateIndex] instanceof Date ? row[effectiveDateIndex] : new Date(row[timestampIndex]);
-        return date;
-      })
-      .filter(date => !isNaN(date.getTime())); // Filter out invalid dates
-
-    if (incumbentEvents.length === 0) {
-      return "No prior incumbent recorded for this position.";
-    }
-
-    // 2. Sort descending to get the most recent date
-    incumbentEvents.sort((a, b) => b.getTime() - a.getTime());
-
-    // 3. Return the most recent date in yyyy-MM-dd format
-    return Utilities.formatDate(incumbentEvents[0], Session.getScriptTimeZone(), 'yyyy-MM-dd');
-
-  } catch (e) {
-    Logger.log(`Error in getLastIncumbentInfo for Position ID ${positionId}: ${e.toString()}`);
-    return "Error retrieving last incumbent date.";
-  }
-}
-
-/**
  * @returns {Array<Object>} An array of employee/position objects representing the preview state.
  * @throws {Error} If the request ID is not found or simulation fails.
  */

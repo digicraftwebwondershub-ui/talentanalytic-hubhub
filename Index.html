@@ -1448,7 +1448,13 @@
 <!-- My Requests View -->
 <div id="my-requests-view" class="tab-content">
   <div class="p-4 sm:p-6 bg-white rounded-lg shadow-md">
-    <h2 class="text-2xl font-bold text-slate-800 mb-4">My Change Requests</h2>
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-bold text-slate-800">My Change Requests</h2>
+      <button id="refresh-my-requests" class="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 font-semibold flex items-center">
+        <svg class="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 4l5 5M20 20l-5-5"></path></svg>
+        Refresh
+      </button>
+    </div>
     <table id="my-requests-table" class="display" style="width:100%">
     </table>
   </div>
@@ -1457,7 +1463,13 @@
 <!-- Approvals View -->
 <div id="approvals-view" class="tab-content">
   <div class="p-4 sm:p-6 bg-white rounded-lg shadow-md">
-    <h2 class="text-2xl font-bold text-slate-800 mb-4">Change Request Approvals</h2>
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-bold text-slate-800">Change Request Approvals</h2>
+      <button id="refresh-approvals" class="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 font-semibold flex items-center">
+        <svg class="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 4l5 5M20 20l-5-5"></path></svg>
+        Refresh
+      </button>
+    </div>
     <table id="approvals-table" class="display" style="width:100%">
     </table>
   </div>
@@ -3390,8 +3402,11 @@ function renderNotifications(data) {
    */
   function setupPageEventListeners() {
     document.getElementById('reset-filters-btn').addEventListener('click', resetFilters);
-    // --- ADD THIS LINE ---
     document.getElementById('show-inactive-checkbox').addEventListener('change', updateUI);
+
+    // Add event listeners for the new refresh buttons
+    document.getElementById('refresh-my-requests').addEventListener('click', refreshChangeRequestData);
+    document.getElementById('refresh-approvals').addEventListener('click', refreshChangeRequestData);
 }
 
   /**
@@ -5496,6 +5511,23 @@ function loadChangeRequestData(callback) {
             $('#approvals-table').html(`<thead><tr><th>Error</th></tr></thead><tbody><tr><td>Error loading approvals: ${err.message}.</td></tr></tbody>`);
         })
         .getChangeRequests();
+}
+
+function refreshChangeRequestData() {
+  changeRequestsDataLoaded = false; // Invalidate the cache
+
+  // Determine which tab is currently active to decide which table to redraw
+  const myRequestsTabActive = document.getElementById('my-requests-view').classList.contains('active');
+  const approvalsTabActive = document.getElementById('approvals-view').classList.contains('active');
+
+  if (myRequestsTabActive) {
+    loadChangeRequestData(renderMyRequestsTable);
+  } else if (approvalsTabActive) {
+    loadChangeRequestData(renderApprovalsTable);
+  }
+
+  // Also refresh the notification badges
+  google.script.run.withSuccessHandler(updateNotificationBadges).getRequestCounts();
 }
 
 function handleApprovalAction(requestId, action) {
