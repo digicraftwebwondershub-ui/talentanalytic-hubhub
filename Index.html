@@ -5415,11 +5415,12 @@ function showRequestDetails(requestId, context) {
       <button onclick="handleApprovalAction('${requestId}', 'Rejected')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Reject</button>
       <button onclick="handleApprovalAction('${requestId}', 'Returned')" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">Return</button>
     ` + footer.innerHTML;
-  } else if (context === 'approvals' && requestData.Status === 'Approved' && userCanApprove && requestData.RequestType !== 'Hiring of a new employee (replacement for vacancy)') {
-    footer.innerHTML = `
-      <button onclick="openPreviewModal('${requestId}')" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Preview Change</button>
-      <button onclick="handleImplementAction('${requestId}')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Implement Change</button>
-    ` + footer.innerHTML;
+  } else if (context === 'approvals' && (requestData.Status === 'Approved' || requestData.Status === 'Implemented')) {
+    let buttons = `<button onclick="openPreviewModal('${requestId}')" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Preview Change</button>`;
+    if (requestData.Status === 'Approved' && userCanApprove && requestData.RequestType !== 'Hiring of a new employee (replacement for vacancy)') {
+        buttons += `<button onclick="handleImplementAction('${requestId}')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Implement Change</button>`;
+    }
+    footer.innerHTML = buttons + footer.innerHTML;
   }
 
   modal.style.display = 'flex';
