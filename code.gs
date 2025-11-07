@@ -4192,9 +4192,70 @@ function getPreviewOrgChartData(requestId) {
     });
     // --- END: NEW HIERARCHY REBUILD LOGIC ---
 
+    // --- START: NEW ORG CHART PREVIEW FILTERING ---
+    let finalPreviewObjects = previewObjects; // Default to the full chart
+    try {
+      let focusUnit = null;
+      let focusLevel = null; // e.g., 'department', 'section'
+
+      // Determine the focus unit based on request type
+      if (requestType.includes('Transfer') || requestType.includes('Promotion')) {
+        const newPosition = previewObjects.find(p => p.positionid === requestRowData['NewPositionID']);
+        if (newPosition) {
+          focusUnit = newPosition.section || newPosition.department || newPosition.group || newPosition.division;
+          focusLevel = newPosition.section ? 'section' : (newPosition.department ? 'department' : (newPosition.group ? 'group' : 'division'));
+        }
+      } else if (requestType.includes('replacement for vacancy')) {
+        const vacantPosition = previewObjects.find(p => p.positionid === requestRowData['VacantPositionID']);
+         if (vacantPosition) {
+          focusUnit = vacantPosition.section || vacantPosition.department || vacantPosition.group || vacantPosition.division;
+          focusLevel = vacantPosition.section ? 'section' : (vacantPosition.department ? 'department' : (vacantPosition.group ? 'group' : 'division'));
+        }
+      } else if (requestType.includes('newly created position')) {
+        focusUnit = requestRowData['Section'] || requestRowData['Department'] || requestRowData['Group'] || requestRowData['Division'];
+        focusLevel = requestRowData['Section'] ? 'section' : (requestRowData['Department'] ? 'department' : (requestRowData['Group'] ? 'group' : 'division'));
+      }
+
+      if (focusUnit && focusLevel) {
+        const employeesInScope = new Set();
+        const managerQueue = [];
+
+        // 1. Add all employees from the focus unit and seed the manager queue
+        previewObjects.forEach(p => {
+          if (p[focusLevel] === focusUnit) {
+            employeesInScope.add(p.positionid);
+            if (p.managerId) {
+              managerQueue.push(p.managerId);
+            }
+          }
+        });
+
+        // 2. Traverse up the management chain
+        const previewMap = new Map(previewObjects.map(p => [p.positionid, p]));
+        while(managerQueue.length > 0) {
+          const managerPosId = managerQueue.shift();
+          if (managerPosId && !employeesInScope.has(managerPosId)) {
+            employeesInScope.add(managerPosId);
+            const manager = previewMap.get(managerPosId);
+            if (manager && manager.managerId) {
+              managerQueue.push(manager.managerId);
+            }
+          }
+        }
+
+        // 3. Filter the final list
+        finalPreviewObjects = previewObjects.filter(p => employeesInScope.has(p.positionid));
+      }
+
+    } catch(filterError) {
+      Logger.log(`PREVIEW FILTER ERROR for Request ID ${requestId}: ${filterError.message}. Falling back to full org chart view.`);
+      finalPreviewObjects = previewObjects; // Fallback
+    }
+    // --- END: NEW ORG CHART PREVIEW FILTERING ---
+
     // --- FINAL DATA SANITIZATION ---
     // Ensure all objects in the array are clean for JSON serialization, especially dates.
-    const sanitizedObjects = previewObjects.map(obj => {
+    const sanitizedObjects = finalPreviewObjects.map(obj => {
       const sanitizedObj = {};
       for (const key in obj) {
         if (obj[key] instanceof Date) {
