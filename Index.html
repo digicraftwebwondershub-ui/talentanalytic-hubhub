@@ -602,7 +602,7 @@
   </div>
 </div>
 
-<div id="jd-modal" class="modal-overlay">
+<div id="jd-modal" class="modal-overlay" style="z-index: 70;">
   <div class="modal-content">
     <div class="flex justify-between items-center mb-4">
       <h2 id="jd-modal-title" class="text-2xl font-bold text-slate-800">Job Description</h2>
@@ -5384,9 +5384,11 @@ function showRequestDetails(requestId, context) {
       const label = keyToLabelMap[key] || key;
       let value = requestData[key]; // Use let to allow modification
 
+      // --- MODIFIED FOR NEW DOCUMENT VIEWER ---
       if (key === 'SupportingDocuments') {
-        value = `<a href="${value}" target="_blank" class="text-blue-600 hover:underline">Open Folder</a>`;
+        value = `<button onclick="openDocumentViewer('${requestData.RequestID}')" class="text-blue-600 hover:underline">View Documents</button>`;
       }
+      // --- END MODIFICATION ---
       
       detailsHtml += `<div class="font-semibold text-gray-600 text-right">${label}:</div>
                       <div class="text-gray-800 break-words">${value}</div>`;
@@ -5407,21 +5409,27 @@ function showRequestDetails(requestId, context) {
 
 
   footer.innerHTML = `<button onclick="closeRequestDetailsModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Close</button>`;
-  
-  if (context === 'approvals' && requestData.Status === 'Pending') {
-    footer.innerHTML = `
-      <button onclick="openPreviewModal('${requestId}')" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Preview Change</button>
-      <button onclick="handleApprovalAction('${requestId}', 'Approved')" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Approve</button>
-      <button onclick="handleApprovalAction('${requestId}', 'Rejected')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Reject</button>
-      <button onclick="handleApprovalAction('${requestId}', 'Returned')" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">Return</button>
-    ` + footer.innerHTML;
-  } else if (context === 'approvals' && (requestData.Status === 'Approved' || requestData.Status === 'Implemented')) {
-    let buttons = `<button onclick="openPreviewModal('${requestId}')" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Preview Change</button>`;
-    if (requestData.Status === 'Approved' && userCanApprove && requestData.RequestType !== 'Hiring of a new employee (replacement for vacancy)') {
-        buttons += `<button onclick="handleImplementAction('${requestId}')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Implement Change</button>`;
-    }
-    footer.innerHTML = buttons + footer.innerHTML;
+  let actionButtons = '';
+
+  // Show Preview button for relevant statuses, regardless of context
+  if (['Pending', 'Approved', 'Implemented'].includes(requestData.Status)) {
+    actionButtons += `<button onclick="openPreviewModal('${requestId}')" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Preview Change</button>`;
   }
+
+  // Show context- and status-specific action buttons
+  if (context === 'approvals') {
+    if (requestData.Status === 'Pending') {
+      actionButtons += `
+        <button onclick="handleApprovalAction('${requestId}', 'Approved')" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Approve</button>
+        <button onclick="handleApprovalAction('${requestId}', 'Rejected')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Reject</button>
+        <button onclick="handleApprovalAction('${requestId}', 'Returned')" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">Return</button>
+      `;
+    } else if (requestData.Status === 'Approved' && userCanApprove && requestData.RequestType !== 'Hiring of a new employee (replacement for vacancy)') {
+      actionButtons += `<button onclick="handleImplementAction('${requestId}')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Implement Change</button>`;
+    }
+  }
+
+  footer.innerHTML = actionButtons + footer.innerHTML;
 
   modal.style.display = 'flex';
 }
@@ -5452,7 +5460,18 @@ function renderMyRequestsTable() {
             },
             { title: 'Requestor', data: 'RequestorEmail' },
             { title: 'Type of Request', data: 'RequestType' },
-            { title: 'Status', data: 'Status' }
+            { title: 'Status', data: 'Status' },
+            {
+              title: 'Documents',
+              data: 'SupportingDocuments',
+              render: function(data, type, row) {
+                if (data === 'View') {
+                  return `<button onclick="openDocumentViewer('${row.RequestID}')" class="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">View</button>`;
+                }
+                return 'N/A';
+              },
+              className: 'text-center'
+            }
         ],
         responsive: false,
         scrollX: true,
@@ -5483,7 +5502,18 @@ function renderApprovalsTable() {
             },
             { title: 'Requestor', data: 'RequestorEmail' },
             { title: 'Type of Request', data: 'RequestType' },
-            { title: 'Status', data: 'Status' }
+            { title: 'Status', data: 'Status' },
+            {
+              title: 'Documents',
+              data: 'SupportingDocuments',
+              render: function(data, type, row) {
+                if (data === 'View') {
+                  return `<button onclick="openDocumentViewer('${row.RequestID}')" class="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">View</button>`;
+                }
+                return 'N/A';
+              },
+              className: 'text-center'
+            }
         ],
         responsive: false,
         scrollX: true,
@@ -5502,7 +5532,12 @@ function loadChangeRequestData(callback) {
     google.script.run
         .withSuccessHandler(data => {
             hideSavingOverlay();
-            window.allChangeRequests = JSON.parse(data);
+            // ROBUSTNESS FIX: Handle cases where data is already an object or a string
+            if (typeof data === 'string') {
+              window.allChangeRequests = JSON.parse(data);
+            } else {
+              window.allChangeRequests = data;
+            }
             changeRequestsDataLoaded = true;
             if (callback) callback();
         })
@@ -5721,6 +5756,64 @@ function closePreviewModal() {
     previewHighlightIds = [];
     previewChangeDescription = '';
 }
+
+// --- NEW DOCUMENT VIEWER FUNCTIONS ---
+
+/**
+ * Initiates the process of viewing documents for a request.
+ * Calls the backend to get a list of files.
+ */
+function openDocumentViewer(requestId) {
+    const modal = document.getElementById('jd-modal');
+    const title = document.getElementById('jd-modal-title');
+    const contentArea = document.getElementById('jd-content-area');
+
+    title.textContent = `Documents for Request ${requestId}`;
+    contentArea.innerHTML = '<div class="flex justify-center items-center h-full"><div id="loader"></div><p class="ml-4">Finding documents...</p></div>';
+    modal.style.display = 'flex';
+
+    google.script.run
+        .withSuccessHandler(fileList => {
+            if (fileList.error) {
+                contentArea.innerHTML = `<p class="text-red-500 text-center font-bold">Error: ${fileList.error}</p>`;
+                return;
+            }
+
+            if (fileList.length === 0) {
+                contentArea.innerHTML = '<p class="text-center text-gray-600 font-bold">No documents are attached to this request.</p>';
+            } else if (fileList.length === 1) {
+                // If there's only one file, show it directly.
+                showDocumentInViewer(fileList[0].url);
+            } else {
+                // If there are multiple files, show a selection list.
+                let buttonsHtml = '<p class="mb-4">Please select a document to view:</p><div class="flex flex-col space-y-2">';
+                fileList.forEach(file => {
+                    // We need to escape the URL to handle special characters in file names
+                    const escapedUrl = escape(file.url);
+                    buttonsHtml += `<button onclick="showDocumentInViewer(unescape('${escapedUrl}'))" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">${escapeHtml(file.name)}</button>`;
+                });
+                buttonsHtml += '</div>';
+                contentArea.innerHTML = buttonsHtml;
+            }
+        })
+        .withFailureHandler(err => {
+            contentArea.innerHTML = `<p class="text-red-500 text-center font-bold">Failed to retrieve documents. Error: ${err.message}</p>`;
+        })
+        .getRequestDocumentList(requestId);
+}
+
+/**
+ * Renders the selected document in the iframe viewer.
+ */
+function showDocumentInViewer(url) {
+    const contentArea = document.getElementById('jd-content-area');
+    if (url && url.startsWith('http')) {
+        contentArea.innerHTML = `<iframe src="${url}" style="width:100%; height:60vh; border:none;"></iframe>`;
+    } else {
+        contentArea.innerHTML = '<p class="text-center text-red-600 font-bold">Invalid document URL provided.</p>';
+    }
+}
+// --- END NEW FUNCTIONS ---
 
 function zoomPreview(amount) {
     currentPreviewZoom = Math.max(0.2, currentPreviewZoom + amount);
