@@ -4124,7 +4124,7 @@ function getPreviewOrgChartData(requestId) {
         position.employeename = newEmployeeName;
         position.status = 'FILLED VACANCY';
         position.isPreviewChange = true;
-        position.changeType = 'Filled Vacancy';
+        position.changeType = 'Replacement of Vacancy';
         position.effectiveDate = effectiveDate ? Utilities.formatDate(new Date(effectiveDate), Session.getScriptTimeZone(), 'yyyy-MM-dd') : null;
         changedPositionIds.add(vacantPositionId);
       } else {
