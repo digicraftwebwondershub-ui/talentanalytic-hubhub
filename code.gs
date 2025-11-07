@@ -298,6 +298,9 @@ function getChangeRequests() {
     const data = sheet.getDataRange().getValues();
     const headers = data.shift();
     const userEmail = Session.getActiveUser().getEmail().toLowerCase().trim();
+    Logger.log('User Email: ' + userEmail);
+    Logger.log('Headers: ' + headers.join(', '));
+
 
     // First, process all rows into a standardized 'requests' array
     const requests = data.map(row => {
@@ -313,14 +316,27 @@ function getChangeRequests() {
       return request;
     });
 
+    // Find the actual keys for email columns, case-insensitively
+    const requestorKey = headers.find(h => (h || '').toLowerCase().replace(/\s+/g, '') === 'requestoremail')?.replace(/\s+/g, '');
+    const approverKey = headers.find(h => (h || '').toLowerCase().replace(/\s+/g, '') === 'approveremail')?.replace(/\s+/g, '');
+
+    Logger.log(`Dynamically found keys -> Requestor: '${requestorKey}', Approver: '${approverKey}'`);
+
+    if (!approverKey) {
+      Logger.log('CRITICAL: Could not find a valid ApproverEmail key from headers. Filtering will fail.');
+    }
+
     // Filter for 'My Requests'
     const myRequests = requests.filter(r => 
-      (r.RequestorEmail || '').toString().toLowerCase().trim() === userEmail
+      (r[requestorKey] || '').toString().toLowerCase().trim() === userEmail
     );
 
-    const approvals = requests.filter(r => 
-      (r.ApproverEmail || '').toString().toLowerCase().trim() === userEmail
-    );
+    const approvals = requests.filter(r => {
+      const approverEmail = (r[approverKey] || '').toString().toLowerCase().trim();
+      // This log is still useful for checking the actual values
+      Logger.log(`Checking row: Value in column '${approverKey}' is '${approverEmail}'. Match with '${userEmail}': ${approverEmail === userEmail}`);
+      return approverEmail === userEmail;
+    });
 
     // Sort both lists by submission timestamp, newest first
     const sortByTimestampDesc = (a, b) => {
@@ -3001,6 +3017,69 @@ function getDateOfBirth(employeeId) {
 
 // --- START: NEW PREDICTIVE INSIGHTS FUNCTION ---
 
+// --- PASTE NEW FUNCTION HERE ---
+/**
+ * Gets a list of documents for a given change request ID.
+ * @param {string} requestId The ID of the change request.
+ * @returns {Array<Object>|Object} An array of file objects {name, url} or an error object.
+ */
+function getRequestDocumentList(requestId) {
+  try {
+    if (!requestId) {
+      return { error: "Request ID is missing." };
+    }
+
+    const parentFolder = DriveApp.getFolderById(CHANGE_REQUESTS_FOLDER_ID);
+    const requestFolders = parentFolder.getFoldersByName(requestId);
+
+    if (!requestFolders.hasNext()) {
+      // If the folder doesn't exist, it might be an older request before folder creation was implemented.
+      // In that case, we can try to find a single file link in the sheet data.
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = ss.getSheetByName('Org Chart Requests');
+      if (sheet) {
+          const data = sheet.getDataRange().getValues();
+          const headers = data[0];
+          const idCol = headers.indexOf('RequestID');
+          const docCol = headers.indexOf('SupportingDocuments');
+          if (idCol > -1 && docCol > -1) {
+              for (let i = 1; i < data.length; i++) {
+                  if (data[i][idCol] === requestId) {
+                      const docUrl = data[i][docCol];
+                      if (docUrl && docUrl.startsWith('http')) {
+                          // This is likely a single file or a folder link. We can't list files,
+                          // but we can return it as a single item for the user to open.
+                          return [{ name: "Open Document Link", url: docUrl }];
+                      }
+                      break; // Found the request, stop searching.
+                  }
+              }
+          }
+      }
+      return []; // Return empty array if folder not found and no link in sheet.
+    }
+
+    const requestFolder = requestFolders.next();
+    const files = requestFolder.getFiles();
+    const fileList = [];
+
+    while (files.hasNext()) {
+      const file = files.next();
+      fileList.push({
+        name: file.getName(),
+        // Use the /preview URL for embedding in the iframe
+        url: `https://drive.google.com/file/d/${file.getId()}/preview`
+      });
+    }
+
+    return fileList;
+
+  } catch (e) {
+    Logger.log(`Error in getRequestDocumentList for ID ${requestId}: ${e.toString()}`);
+    return { error: `Server error while retrieving documents: ${e.message}` };
+  }
+}
+
 // --- START: REVISED PREDICTIVE INSIGHTS FUNCTION (v2) ---
 
 function getAttritionRiskData() {
@@ -4045,7 +4124,7 @@ function getPreviewOrgChartData(requestId) {
         position.employeename = newEmployeeName;
         position.status = 'FILLED VACANCY';
         position.isPreviewChange = true;
-        position.changeType = 'Replacement for Vacancy';
+        position.changeType = 'Filled Vacancy';
         position.effectiveDate = effectiveDate ? Utilities.formatDate(new Date(effectiveDate), Session.getScriptTimeZone(), 'yyyy-MM-dd') : null;
         changedPositionIds.add(vacantPositionId);
       } else {
