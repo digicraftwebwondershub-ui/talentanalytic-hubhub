@@ -5465,7 +5465,7 @@ function renderMyRequestsTable() {
               title: 'Documents',
               data: 'SupportingDocuments',
               render: function(data, type, row) {
-                if (row.SupportingDocuments) {
+                if (row.SupportingDocuments) { 
                   return `<button onclick="openDocumentViewer('${row.RequestID}')" class="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">View</button>`;
                 }
                 return 'N/A';
