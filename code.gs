@@ -156,11 +156,12 @@ function implementApprovedChange(requestId) {
             }
           }
           // --- END FIX ---
-
+          const employeeGender = _getEmployeeGender(employeeId);
           dataToSave = {
             positionid: rowData[headerMap.get('NewPositionID')],
             employeeid: employeeId, // Use the potentially retrieved employeeId
             employeename: rowData[headerMap.get('EmployeeName')],
+            gender: employeeGender,
             datehired: rowData[headerMap.get('DateHired')],
             dateofbirth: rowData[headerMap.get('DateOfBirth')],
             status: requestType,
@@ -195,6 +196,7 @@ function implementApprovedChange(requestId) {
             reportingtoid: rowData[headerMap.get('ReportingToId')],
             reportingto: rowData[headerMap.get('ReportingTo')],
             status: 'VACANT',
+            positionstatus: 'Active',
             employeename: '',
             employeeid: '',
           };
@@ -237,6 +239,47 @@ function implementApprovedChange(requestId) {
   } catch (e) {
     logToSheet('FATAL Error in implementApprovedChange: ' + e.message + ' Stack: ' + e.stack);
     return { success: false, error: 'Failed to implement request. ' + e.message };
+  }
+}
+
+function _getEmployeeGender(employeeId) {
+  if (!employeeId) return '';
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const allSheets = ss.getSheets();
+    let mainSheet = null;
+
+    // Find the correct sheet by looking for key headers
+    for (const sheet of allSheets) {
+      if (sheet.getLastRow() > 0 && sheet.getLastColumn() > 1) {
+        const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+        if (headers.includes('Employee ID') && headers.includes('Gender')) {
+          mainSheet = sheet;
+          break;
+        }
+      }
+    }
+
+    // If no sheet is found, fallback to the first sheet as a last resort.
+    if (!mainSheet) {
+        mainSheet = allSheets[0];
+    }
+
+    const data = mainSheet.getDataRange().getValues();
+    const headers = data[0];
+    const empIdIndex = headers.indexOf('Employee ID');
+    const genderIndex = headers.indexOf('Gender');
+    if (empIdIndex === -1 || genderIndex === -1) return '';
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][empIdIndex]).trim() === String(employeeId).trim()) {
+        return data[i][genderIndex] || '';
+      }
+    }
+    return ''; // Return empty string if employee not found
+  } catch (e) {
+    Logger.log(`Error in _getEmployeeGender: ${e.message}`);
+    return ''; // Return empty string on error
   }
 }
 
@@ -389,6 +432,7 @@ function getEmployeeDetails(employeeName) {
     const empIdIndex = headers.indexOf('Employee ID');
     const dateHiredIndex = headers.indexOf('Date Hired');
     const dobIndex = headers.indexOf('Date of Birth');
+    const genderIndex = headers.indexOf('Gender');
 
     if (empNameIndex === -1 || empIdIndex === -1 || dateHiredIndex === -1 || dobIndex === -1) {
       return null;
@@ -402,7 +446,8 @@ function getEmployeeDetails(employeeName) {
       return {
         employeeId: employeeRow[empIdIndex],
         dateHired: dateHired,
-        dateOfBirth: dateOfBirth
+        dateOfBirth: dateOfBirth,
+        gender: employeeRow[genderIndex]
       };
     }
     return null;

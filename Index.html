@@ -4685,6 +4685,7 @@ function handleRequestTypeChange() {
           <div><label class="block font-medium">Employee ID</label><input type="text" id="request-EmployeeID" name="EmployeeID" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
           <div><label class="block font-medium">Date Hired</label><input type="text" id="request-DateHired" name="DateHired" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
           <div><label class="block font-medium">Date of Birth</label><input type="text" id="request-DateOfBirth" name="DateOfBirth" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+          <div><label class="block font-medium">Gender</label><input type="text" id="request-Gender" name="Gender" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
         </div>
         <div><label class="block font-medium">Current Position ID</label><input type="text" id="current-position-id" name="CurrentPositionID" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
         <div><label class="block font-medium">New Position ID</label><div id="new-position-dropdown" class="searchable-dropdown"></div></div>
@@ -4757,6 +4758,7 @@ function handleRequestTypeChange() {
               document.getElementById('request-EmployeeID').value = details.employeeId || '';
               document.getElementById('request-DateHired').value = details.dateHired || '';
               document.getElementById('request-DateOfBirth').value = details.dateOfBirth || '';
+              document.getElementById('request-Gender').value = details.gender || '';
             }
           })
           .getEmployeeDetails(employeeName);
@@ -4907,6 +4909,7 @@ function submitRequest() {
       EmployeeName: document.querySelector('#employee-request-dropdown .searchable-dropdown-input')?.value,
       CurrentPositionID: document.getElementById('current-position-id')?.value,
       NewPositionID: document.querySelector('#new-position-dropdown .searchable-dropdown-input')?.value,
+      Gender: document.getElementById('request-Gender')?.value,
       NewReportingTo: document.getElementById('request-NewReportingTo')?.value,
       NewReportingToId: document.getElementById('request-NewReportingToId')?.value,
 
