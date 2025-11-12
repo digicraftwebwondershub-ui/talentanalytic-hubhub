@@ -1407,7 +1407,7 @@
           </select>
         </div>
         <div>
-          <label class="block font-medium">Select Approver</label>
+          <label class="block font-medium">Select Approver <span class="text-red-500">*</span></label>
           <select id="approver-email-select" name="ApproverEmail" class="mt-1 p-2 w-full border rounded">
             <option value="">Loading approvers...</option>
           </select>
@@ -4860,6 +4860,12 @@ function submitRequest() {
   const requestType = document.getElementById('request-type').value;
   if (!requestType) {
     alert('Please select a request type.');
+    return;
+  }
+
+  const approver = document.getElementById('approver-email-select').value;
+  if (!approver) {
+    alert('Please select an approver.');
     return;
   }
 
