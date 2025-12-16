@@ -511,6 +511,56 @@
       background-color: #ffffff;
     }
 
+    /* --- NEW ATTACHMENT STYLES --- */
+.attachment-group {
+  background-color: #f8fafc;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  margin-top: 8px;
+}
+.attachment-row {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.attachment-row:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.attachment-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 4px;
+}
+.required-star {
+  color: #ef4444;
+  margin-left: 2px;
+}
+.attachment-subtext {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-style: italic;
+}
+/* Validation Styles */
+.input-error {
+  border: 1px solid #ef4444 !important;
+  background-color: #fef2f2;
+}
+.error-message {
+  color: #ef4444;
+  font-size: 0.75rem;
+  margin-top: 4px;
+  display: none; /* Hidden by default */
+}
+.show-error {
+  display: block;
+}
+
+
   </style>
 </head>
 <body>
@@ -1302,92 +1352,159 @@
   </div>
 
   <div id="competency-view" class="tab-content">
+    
+    <h2 class="text-3xl font-bold text-slate-800 mb-6">Employee Competency</h2>
+
     <div class="p-4 sm:p-6 bg-white rounded-lg shadow-md">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-2xl font-bold text-slate-800">Employee Competency</h2>
+        
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+            <h3 id="competency-card-title" class="text-xl font-bold text-slate-800 mb-4 md:mb-0">
+                Employee Competency Profile
+            </h3>
+
             <div id="competency-view-toggle" class="flex space-x-1 bg-gray-200 p-1 rounded-lg">
                 <button id="show-individual-profile" class="px-3 py-1 text-sm font-medium rounded-md bg-white shadow text-blue-700">Individual Profile</button>
                 <button id="show-team-heatmap" class="px-3 py-1 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-300">Team Heatmap</button>
             </div>
         </div>
+
         <div id="individual-profile-view">
-            <h3 class="text-xl font-bold text-slate-800 mb-4">Employee Competency Profile</h3>
-            <div class="max-w-md">
-                <label for="competency-employee-select" class="block text-sm font-medium text-gray-700">Choose a Person</label>
-                <select id="competency-employee-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                    <option>Loading employees...</option>
-                </select>
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4 bg-gray-50 p-4 rounded border">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Division</label>
+                    <div id="comp-division-filter-container" class="searchable-dropdown mt-1"></div>
+                    <input type="hidden" id="comp-division-filter-value" value="all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Group</label>
+                    <div id="comp-group-filter-container" class="searchable-dropdown mt-1"></div>
+                    <input type="hidden" id="comp-group-filter-value" value="all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Department</label>
+                    <div id="comp-department-filter-container" class="searchable-dropdown mt-1"></div>
+                    <input type="hidden" id="comp-department-filter-value" value="all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Section</label>
+                    <div id="comp-section-filter-container" class="searchable-dropdown mt-1"></div>
+                    <input type="hidden" id="comp-section-filter-value" value="all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Employee Name</label>
+                    <div id="comp-employee-filter-container" class="searchable-dropdown mt-1"></div>
+                    <input type="hidden" id="competency-employee-select" value=""> 
+                    
+                    <button onclick="resetCompetencyFilters()" class="mt-3 w-full bg-rose-600 text-white py-2 px-4 rounded hover:bg-rose-700 font-semibold shadow text-sm">
+                        Reset Filter
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
 
     <div id="individual-profile-content">
-      <div id="competency-summary-container" class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8" style="display: none;">
-      <div class="p-4 sm:p-6 bg-white rounded-lg shadow-md flex flex-col items-center">
-          <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">Overall Score</h3>
-          <div id="gauge-chart-div" style="width: 250px; height: 250px;"></div>
-      </div>
-      <div class="p-4 sm:p-6 bg-white rounded-lg shadow-md">
-          <h3 class="text-xl font-bold text-slate-800 mb-4 text-center">Top Strengths</h3>
-          <ul id="strengths-list" class="space-y-3">
-              </ul>
-      </div>
-      <div class="p-4 sm:p-6 bg-white rounded-lg shadow-md">
-          <h3 class="text-xl font-bold text-slate-800 mb-4 text-center">Development Areas</h3>
-          <ul id="gaps-list" class="space-y-3">
-              </ul>
-      </div>
-  </div>
-  
-  <div id="competency-history-container" class="mt-8 p-6 bg-white rounded-lg shadow-md mx-auto max-w-5xl" style="display: none;">
-      <h3 class="text-xl font-bold text-slate-800 mb-4 text-center">Competency Development Over Time</h3>
-      
-      <div class="relative w-full" style="height: 300px;">
-          <canvas id="historical-competency-chart"></canvas>
-      </div>
-  </div>
-  
-      <div id="competency-charts-loader" class="flex justify-center items-center h-64 mt-8" style="display: none;"><div id="loader"></div></div>
-  
-      <div id="competency-charts-container" class="mt-8 flex flex-col gap-8" style="display: none;">
-          
-          <div id="core-section" class="bg-white rounded-lg shadow-md p-6">
-              </div>
-          
-          <div id="leadership-section" class="bg-white rounded-lg shadow-md p-6">
-              </div>
-          
-          <div id="technical-section" class="bg-white rounded-lg shadow-md p-6">
-              </div>
-
-      </div>
-    </div>
-
-    <!-- New Team Competency Heatmap Section -->
-    <div id="team-competency-section" class="mt-8 p-4 sm:p-6 bg-white rounded-lg shadow-md" style="display: none;">
-        <h2 class="text-2xl font-bold text-slate-800 mb-4">Team Competency Heatmap</h2>
-        
-        <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
-            
-            <div class="w-full md:w-1/3">
-                <label for="heatmap-department-select" class="block text-sm font-medium text-gray-700">Choose a Department</label>
-                <select id="heatmap-department-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                    <option>Loading departments...</option>
-                </select>
+            <div id="competency-dashboard-grid" class="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" style="display: none;">
+                <div class="bg-white rounded-lg shadow-md p-4 flex flex-col items-center justify-center h-full min-h-[280px]">
+                    <h3 class="text-md font-bold text-slate-700 mb-2 text-center">Current Overall Score</h3>
+                    <div id="gauge-chart-div" class="flex justify-center items-center flex-grow"></div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-4 border-t-4 border-green-500 h-full min-h-[280px] flex flex-col">
+                    <div class="flex items-center mb-4 shrink-0">
+                        <div class="p-2 bg-green-100 rounded-full mr-3">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                        </div>
+                        <h3 class="text-md font-bold text-slate-800">Top Strengths</h3>
+                    </div>
+                    <ul id="strengths-list" class="space-y-3 text-sm overflow-y-auto flex-grow"></ul>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-4 border-t-4 border-red-500 h-full min-h-[280px] flex flex-col">
+                    <div class="flex items-center mb-4 shrink-0">
+                        <div class="p-2 bg-red-100 rounded-full mr-3">
+                            <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        </div>
+                        <h3 class="text-md font-bold text-slate-800">Development Areas</h3>
+                    </div>
+                    <ul id="gaps-list" class="space-y-3 text-sm overflow-y-auto flex-grow"></ul>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-4 flex flex-col h-full min-h-[280px]">
+                    <h3 class="text-md font-bold text-slate-700 mb-2 text-center">Development Over Time</h3>
+                    <div class="relative w-full flex-grow flex items-center justify-center">
+                        <canvas id="historical-competency-chart" style="max-height: 220px;"></canvas>
+                    </div>
+                </div>
             </div>
-
-            <div id="heatmap-legend" class="flex flex-wrap p-3 bg-gray-50 rounded border border-gray-200 items-center shadow-sm" style="display: none;">
-                <span class="font-bold text-sm text-gray-700 mr-4">Legend:</span>
-                <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #16a34a;"></div>4 (Innovator)</div>
-                <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #22c55e;"></div>3 (Knowledge Sharer)</div>
-                <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #facc15;"></div>2 (Competent)</div>
-                <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #f97316;"></div>1 (Learner)</div>
-                <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #f3f4f6; border: 1px solid #ccc;"></div>N/A</div>
+            <div id="competency-charts-loader" class="flex justify-center items-center h-64 mt-8" style="display: none;"><div id="loader"></div></div>
+            <div id="competency-charts-container" class="mt-8 flex flex-col gap-8" style="display: none;">
+                <div id="core-section" class="bg-white rounded-lg shadow-md p-6"></div>
+                <div id="leadership-section" class="bg-white rounded-lg shadow-md p-6"></div>
+                <div id="technical-section" class="bg-white rounded-lg shadow-md p-6"></div>
             </div>
         </div>
+
+    <!-- New Team Competency Heatmap Section -->
+    <div id="team-competency-section" class="mt-0" style="display: none;">
+            
+            <div class="flex justify-end mb-4">
+                <div id="heatmap-legend" class="flex flex-wrap p-2 bg-gray-50 rounded border border-gray-200 items-center shadow-sm text-sm" style="display: none;">
+                    <span class="font-bold text-gray-700 mr-3">Legend:</span>
+                    <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #16a34a;"></div>4 (Innovator)</div>
+                    <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #22c55e;"></div>3 (Knowledge Sharer)</div>
+                    <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #facc15;"></div>2 (Competent)</div>
+                    <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #f97316;"></div>1 (Learner)</div>
+                    <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #f3f4f6; border: 1px solid #ccc;"></div>N/A</div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 bg-gray-50 p-4 rounded border">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Division</label>
+                    <div id="heatmap-division-filter-container" class="searchable-dropdown mt-1"></div>
+                    <input type="hidden" id="heatmap-division-filter-value" value="all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Group</label>
+                    <div id="heatmap-group-filter-container" class="searchable-dropdown mt-1"></div>
+                    <input type="hidden" id="heatmap-group-filter-value" value="all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Department</label>
+                    <div id="heatmap-department-filter-container" class="searchable-dropdown mt-1"></div>
+                    <input type="hidden" id="heatmap-department-filter-value" value="all">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Section</label>
+                    <div id="heatmap-section-filter-container" class="searchable-dropdown mt-1"></div>
+                    <input type="hidden" id="heatmap-section-filter-value" value="all">
+                </div>
+                <div class="flex items-end gap-2">
+                    <button onclick="resetHeatmapFilters()" class="bg-slate-700 text-white py-2 px-3 rounded hover:bg-slate-800 font-semibold shadow" title="Reset Filters">
+                        Reset
+                    </button>
+                    <button onclick="triggerHeatmapDraw()" class="flex-grow bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 font-semibold shadow">
+                        Generate
+                    </button>
+                </div>
+            </div>
+
+        <div id="heatmap-loader" class="flex justify-center items-center h-48" style="display: none;"><div id="loader"></div></div>
+            <div id="heatmap-container" class="overflow-x-auto" style="max-height: 70vh;"></div>
+        </div>
+    </div>
+
+        <div id="heatmap-legend" class="flex flex-wrap p-3 mb-4 bg-white rounded border border-gray-200 items-center shadow-sm" style="display: none;">
+            <span class="font-bold text-sm text-gray-700 mr-4">Legend:</span>
+            <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #16a34a;"></div>4 (Innovator)</div>
+            <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #22c55e;"></div>3 (Knowledge Sharer)</div>
+            <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #facc15;"></div>2 (Competent)</div>
+            <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #f97316;"></div>1 (Learner)</div>
+            <div class="heatmap-legend-item"><div class="heatmap-color-box" style="background-color: #f3f4f6; border: 1px solid #ccc;"></div>N/A</div>
+        </div>
+
         <div id="heatmap-loader" class="flex justify-center items-center h-48" style="display: none;"><div id="loader"></div></div>
 
         <div id="heatmap-container" class="overflow-x-auto" style="max-height: 70vh;">
+            </div>
+    </div>
             </div>
             <!-- Heatmap table will be generated here by JavaScript -->
         </div>
@@ -1407,9 +1524,7 @@
                 </div>
                 <div>
                     <h3 class="text-xl font-bold text-slate-700 mb-4 text-center">Top Performers</h3>
-                    <ul id="top-performers-list" class="space-y-2">
-                        <!-- Top performers will be listed here -->
-                    </ul>
+                    <ul id="top-performers-list" class="space-y-2"></ul>
                 </div>
             </div>
             <div class="mt-6 flex justify-end">
@@ -1451,6 +1566,13 @@
             <option value="Internal Transfer">Internal Transfer</option>
             <option value="Hiring of a new employee (newly created position)">Hiring of a new employee (newly created position)</option>
             <option value="Hiring of a new employee (replacement for vacancy)">Hiring of a new employee (replacement for vacancy)</option>
+            <option value="Change in Employment Status">Change in Employment Status</option>
+            <option value="Change in Reporting line">Change in Reporting line</option>
+            <option value="Job Title/Position Change (without promotion)">Job Title/Position Change (without promotion)</option>
+            <option value="Name Correction/Update of Employee Information">Name Correction/Update of Employee Information</option>
+            <option value="Position on Hold/Cancelled/Deleted">Position on Hold/Cancelled/Deleted</option>
+            <option value="Regularization">Regularization</option>
+            <option value="Resignation/Separation">Resignation/Separation</option>
           </select>
         </div>
         <div>
@@ -1491,6 +1613,32 @@
   </div>
 </div>
 <div id="custom-tooltip" onmouseover="clearTimeout(tooltipTimeout)" onmouseout="hideTooltip()"></div>
+
+<div id="return-modal" class="modal-overlay">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-slate-800">Return Request</h2>
+      <button onclick="closeReturnModal()" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+    </div>
+    
+    <p class="text-sm text-gray-600 mb-4">Please indicate why this request is being returned. Select the fields that need correction.</p>
+    
+    <form id="return-form" class="space-y-3 max-h-[60vh] overflow-y-auto p-1">
+        <div class="space-y-2" id="return-checklist-container">
+            </div>
+        
+        <div class="mt-4 pt-4 border-t">
+            <label class="block font-bold text-sm text-gray-700 mb-1">Additional Comments / Instructions</label>
+            <textarea id="return-general-comment" class="w-full p-2 border rounded text-sm" rows="3" placeholder="Provide overall instructions here..."></textarea>
+        </div>
+    </form>
+
+    <div class="mt-6 flex justify-end gap-3">
+      <button onclick="closeReturnModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+      <button onclick="submitReturnDecision()" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 font-bold">Return Request</button>
+    </div>
+  </div>
+ </div> 
 
 <!-- My Requests View -->
 <div id="my-requests-view" class="tab-content">
@@ -1669,6 +1817,101 @@
   var previewHighlightIds = [];
   var previewChangeDescription = '';
 
+  // --- NEW: ATTACHMENT CONFIGURATION & LOGIC ---
+
+const ATTACHMENT_CONFIG = {
+  'Hiring of a new employee (newly created position)': [
+    'Approved POMP (if applicable)',
+    'Workload Assessment (Job Description)',
+    'Email Approval from Department Head / Management'
+  ],
+  'Hiring of a new employee (replacement for vacancy)': [
+    'Approved POMP (if applicable)',
+    'Resignation Letter (if applicable)',
+    'Approved Personnel Requisition Form (PRF)'
+  ],
+  'Promotion': [
+    'Approved Personnel Action Form (PAF)'
+  ],
+  'Internal Transfer': [
+    'Approved Personnel Action Form (PAF)'
+  ],
+  'Lateral Transfer': [
+    'Approved Personnel Action Form (PAF)'
+  ],
+    'Change in Employment Status': [
+    'Approved Personnel Action Form (PAF)'
+  ],
+  'Change in Reporting line': [
+    'Approved Personnel Action Form (PAF)'
+  ],
+  'Job Title/Position Change (without promotion)': [
+    'Approved Personnel Action Form (PAF)'
+  ],
+    'Name Correction/Update of Employee Information': [
+    'Supporting Document (e.g., Birth Certificate, Marriage Certificate)'
+  ],
+  'Position on Hold/Cancelled/Deleted': [
+    'Management Approval'
+  ],
+  'Regularization': [
+    'Approved Personnel Action Form (PAF)',
+    'Performance Evaluation Form'
+  ],
+  'Resignation/Separation': [
+    'Resignation Letter',
+    'Clearance Form (if applicable)'
+  ]
+};
+
+/**
+ * Generates the HTML for the dynamic attachment section.
+ */
+function generateAttachmentsHTML(requestType) {
+  const requirements = ATTACHMENT_CONFIG[requestType] || [];
+  
+  if (requirements.length === 0) {
+    // Fallback if no specific config exists (though your list covers all current types)
+    return `
+      <div class="md:col-span-2">
+        <label class="block font-medium text-gray-700">Supporting Documents</label>
+        <p class="text-xs text-gray-500 mb-2">Upload up to 5 files.</p>
+        <input type="file" id="generic-upload" multiple class="dynamic-attachment-input block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+      </div>`;
+  }
+
+  let rowsHtml = requirements.map((reqText, index) => {
+    const isOptional = reqText.toLowerCase().includes('(if applicable)');
+    const isRequired = !isOptional;
+    const labelHtml = isRequired 
+      ? `${reqText} <span class="required-star">*</span>` 
+      : reqText;
+    
+    // We add data-required attribute to easily check validation later
+    return `
+      <div class="attachment-row">
+        <label class="attachment-label">${labelHtml}</label>
+        <input type="file" 
+               class="dynamic-attachment-input block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" 
+               data-label="${reqText}"
+               data-required="${isRequired}">
+        <div class="error-message">This attachment is required.</div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="md:col-span-2">
+      <label class="block font-medium text-gray-800 mb-1">Required Attachments</label>
+      <div class="attachment-group">
+        ${rowsHtml}
+      </div>
+      <p id="global-file-error" class="text-red-500 text-xs mt-2" style="display:none;"></p>
+      <p class="text-xs text-gray-400 mt-1 text-right">Total max files: 5</p>
+    </div>
+  `;
+}
+
   // --- CONSTANTS & CONFIG ---
   var levelColors = { 1: '#000000', 2: '#f56565', 3: '#4299e1', 4: '#48bb78', 5: '#9f7aea', 6: '#ed8936', 'default': '#a0aec0' };
   var levelNames = { 1: 'Executive', 2: 'Director', 3: 'Managerial', 4: 'Supervisory', 5: 'Associate', 6: 'Jobcon' };
@@ -1704,6 +1947,228 @@
     { id: 'Department', containerId: 'masterlist-Department-filter-container', defaultLabel: 'All Departments', parent: 'Group' },
     { id: 'Section', containerId: 'masterlist-Section-filter-container', defaultLabel: 'All Sections', parent: 'Department' }
 ];
+
+// --- COMPETENCY FILTERS CONFIGURATION ---
+  const COMP_FILTERS_CONFIG = [
+      { id: 'division', containerId: 'comp-division-filter-container', valueId: 'comp-division-filter-value', defaultLabel: 'All Divisions', parent: null },
+      { id: 'group', containerId: 'comp-group-filter-container', valueId: 'comp-group-filter-value', defaultLabel: 'All Groups', parent: 'division' },
+      { id: 'department', containerId: 'comp-department-filter-container', valueId: 'comp-department-filter-value', defaultLabel: 'All Departments', parent: 'group' },
+      { id: 'section', containerId: 'comp-section-filter-container', valueId: 'comp-section-filter-value', defaultLabel: 'All Sections', parent: 'department' }
+  ];
+
+  /**
+   * Populates the dynamic filters for the Competency View.
+   * Filters the global `fullEmployeeData` based on selections and updates the Employee list.
+   */
+  function populateCompetencyFilters() {
+      // Start with all employees who have an ID
+      let sourceData = fullEmployeeData.filter(emp => emp.employeeId);
+
+      // 1. Process Hierarchy Filters (Division -> Group -> Department -> Section)
+      COMP_FILTERS_CONFIG.forEach(config => {
+          const currentValue = document.getElementById(config.valueId).value;
+          
+          // Get unique options based on current filtered sourceData
+          const options = [config.defaultLabel, ...new Set(sourceData.map(e => e[config.id]).filter(String).sort())];
+          
+          createSearchableDropdown(config.containerId, options, null, null, (selection) => {
+              const newValue = (selection === config.defaultLabel) ? 'all' : selection;
+              
+              if (document.getElementById(config.valueId).value !== newValue) {
+                  document.getElementById(config.valueId).value = newValue;
+                  
+                  // Reset children filters when a parent changes
+                  let childIdToReset = config.id;
+                  let childConfig = COMP_FILTERS_CONFIG.find(f => f.parent === childIdToReset);
+                  while (childConfig) {
+                      document.getElementById(childConfig.valueId).value = 'all';
+                      childIdToReset = childConfig.id;
+                      childConfig = COMP_FILTERS_CONFIG.find(f => f.parent === childIdToReset);
+                  }
+                  
+                  populateCompetencyFilters(); // Recursively update child options
+              }
+          });
+
+          setSearchableDropdownValue(config.containerId, currentValue === 'all' ? config.defaultLabel : currentValue);
+
+          // Filter data for the next level down
+          if (currentValue !== 'all') {
+              sourceData = sourceData.filter(emp => emp[config.id] === currentValue);
+          }
+      });
+
+      // 2. Process Employee Dropdown (The final filtered list)
+      const employees = sourceData.map(emp => ({
+          name: emp.employeeName,
+          id: emp.employeeId
+      })).sort((a, b) => a.name.localeCompare(b.name));
+
+      createSearchableDropdown('comp-employee-filter-container', employees, 'name', 'id', (employeeId) => {
+          const currentSelectValue = document.getElementById('competency-employee-select').value;
+          
+          // Only redraw if the selection actually changed
+          if (currentSelectValue !== employeeId) {
+              document.getElementById('competency-employee-select').value = employeeId;
+              
+              if (employeeId) {
+                  drawCompetencyDashboard(employeeId);
+              } else {
+                  // Hide dashboard if selection is cleared
+                  const idsToHide = ['competency-summary-container', 'competency-history-container', 
+                                     'competency-charts-container', 'team-competency-section', 
+                                     'individual-profile-content'];
+                  idsToHide.forEach(id => {
+                      const el = document.getElementById(id);
+                      if(el) el.style.display = 'none';
+                  });
+              }
+          }
+      });
+      
+      // Update the text in the employee box if an ID is already selected (e.g., from Org Chart click)
+      const currentEmpId = document.getElementById('competency-employee-select').value;
+      if (currentEmpId) {
+          const currentEmp = employees.find(e => e.id === currentEmpId);
+          if (currentEmp) {
+              setSearchableDropdownValue('comp-employee-filter-container', currentEmp.name);
+          } else {
+              // If the selected employee is no longer in the filtered list (e.g. user changed Division), clear the display
+              setSearchableDropdownValue('comp-employee-filter-container', '');
+          }
+      }
+  }
+
+// --- HEATMAP FILTERS CONFIGURATION ---
+  const HEATMAP_FILTERS_CONFIG = [
+      { id: 'division', containerId: 'heatmap-division-filter-container', valueId: 'heatmap-division-filter-value', defaultLabel: 'All Divisions', parent: null },
+      { id: 'group', containerId: 'heatmap-group-filter-container', valueId: 'heatmap-group-filter-value', defaultLabel: 'All Groups', parent: 'division' },
+      { id: 'department', containerId: 'heatmap-department-filter-container', valueId: 'heatmap-department-filter-value', defaultLabel: 'All Departments', parent: 'group' },
+      { id: 'section', containerId: 'heatmap-section-filter-container', valueId: 'heatmap-section-filter-value', defaultLabel: 'All Sections', parent: 'department' }
+  ];
+
+  /**
+   * Populates the dynamic filters for the Team Heatmap.
+   */
+  function populateHeatmapFilters() {
+      // Start with all employees who have an ID
+      let sourceData = fullEmployeeData.filter(emp => emp.employeeId);
+
+      HEATMAP_FILTERS_CONFIG.forEach(config => {
+          const currentValue = document.getElementById(config.valueId).value;
+          const options = [config.defaultLabel, ...new Set(sourceData.map(e => e[config.id]).filter(String).sort())];
+          
+          createSearchableDropdown(config.containerId, options, null, null, (selection) => {
+              const newValue = (selection === config.defaultLabel) ? 'all' : selection;
+              
+              if (document.getElementById(config.valueId).value !== newValue) {
+                  document.getElementById(config.valueId).value = newValue;
+                  
+                  // Reset children
+                  let childIdToReset = config.id;
+                  let childConfig = HEATMAP_FILTERS_CONFIG.find(f => f.parent === childIdToReset);
+                  while (childConfig) {
+                      document.getElementById(childConfig.valueId).value = 'all';
+                      childIdToReset = childConfig.id;
+                      childConfig = HEATMAP_FILTERS_CONFIG.find(f => f.parent === childIdToReset);
+                  }
+                  
+                  populateHeatmapFilters(); // Recursive update
+                  // Note: We DO NOT auto-draw the heatmap on filter change because it can be heavy.
+                  // User must click "Generate Heatmap".
+              }
+          });
+
+          setSearchableDropdownValue(config.containerId, currentValue === 'all' ? config.defaultLabel : currentValue);
+
+          if (currentValue !== 'all') {
+              sourceData = sourceData.filter(emp => emp[config.id] === currentValue);
+          }
+      });
+  }
+
+/**
+   * Resets the filters for the Employee Competency Profile view.
+   */
+  function resetCompetencyFilters() {
+      // 1. Reset Configured Filters (Division, Group, Dept, Section)
+      COMP_FILTERS_CONFIG.forEach(config => {
+          document.getElementById(config.valueId).value = 'all';
+          
+          // Reset visual text in the dropdown input
+          const container = document.getElementById(config.containerId);
+          if(container) {
+               const input = container.querySelector('input.searchable-dropdown-input');
+               if(input) input.value = config.defaultLabel;
+          }
+      });
+
+      // 2. Reset Employee Filter Selection
+      document.getElementById('competency-employee-select').value = '';
+      const empContainer = document.getElementById('comp-employee-filter-container');
+      if(empContainer) {
+           const input = empContainer.querySelector('input.searchable-dropdown-input');
+           if(input) input.value = '';
+      }
+
+      // 3. Re-populate filters to restore the full list of options
+      populateCompetencyFilters();
+
+      // 4. Hide the dashboard content since no employee is selected anymore
+      const idsToHide = [
+          'competency-dashboard-grid', 
+          'competency-charts-container', 
+          'competency-summary-container', 
+          'competency-history-container'
+      ];
+      idsToHide.forEach(id => {
+          const el = document.getElementById(id);
+          if(el) el.style.display = 'none';
+      });
+  }
+
+  /**
+   * Resets the filters for the Team Heatmap view.
+   */
+  function resetHeatmapFilters() {
+      // 1. Reset Configured Filters
+      HEATMAP_FILTERS_CONFIG.forEach(config => {
+          document.getElementById(config.valueId).value = 'all';
+          
+          // Reset visual text in the dropdown input
+          const container = document.getElementById(config.containerId);
+          if(container) {
+               const input = container.querySelector('input.searchable-dropdown-input');
+               if(input) input.value = config.defaultLabel;
+          }
+      });
+
+      // 2. Re-populate filters to restore full lists
+      populateHeatmapFilters();
+      
+      // 3. Clear the heatmap container and legend
+      document.getElementById('heatmap-container').innerHTML = '';
+      const legend = document.getElementById('heatmap-legend');
+      if(legend) legend.style.display = 'none';
+  }
+
+  // Wrapper function called by the "Generate Heatmap" button
+  function triggerHeatmapDraw() {
+      const filters = {
+          division: document.getElementById('heatmap-division-filter-value').value,
+          group: document.getElementById('heatmap-group-filter-value').value,
+          department: document.getElementById('heatmap-department-filter-value').value,
+          section: document.getElementById('heatmap-section-filter-value').value
+      };
+      
+      // Check if all are 'all'
+      if (Object.values(filters).every(val => val === 'all')) {
+          alert("Please select at least one filter (e.g., Division or Department) to generate the heatmap.");
+          return;
+      }
+
+      drawTeamCompetencyHeatmap(filters);
+  }
 
 // --- START: NEW INITIALIZATION & LOGIN LOGIC ---
 document.addEventListener("DOMContentLoaded", function() {
@@ -2578,7 +3043,7 @@ function drawEmployeeMovementCharts(forceRefresh = false) {
     if (!data) {
       hideLoader();
       console.error('Error: Fetched data is null. The backend script may have encountered a critical error.');
-      document.getElementById('chart_div').innerHTML = '<p class="text-red-600 p-4 font-bold">Error: Could not load data from the server. This can happen if a required sheet is missing or if there is a data formatting error (e.g., text in a date column). Please check the Apps Script logs for details.</p>';
+      document.getElementById('chart_div').innerHTML = '<p class="text-red-600 p-4 font-bold">Error: Could not load data from the server. Please check logs.</p>';
       return;
     }
   
@@ -2603,14 +3068,23 @@ function drawEmployeeMovementCharts(forceRefresh = false) {
       document.getElementById('tab-approvals').style.display = 'block';
     }
     
-    // Fetch and display notification counts after main data is loaded
     google.script.run.withSuccessHandler(updateNotificationBadges).getRequestCounts();
 
     populateLevelLegend();
     setupPageEventListeners();
-    populateFilters();
-    // initializeCompetencyView(); // This will be moved to switchTab
+    populateFilters(); // Populates Org Chart filters
+    
     updateUI();
+
+    // --- FIX START: Refresh Competency Filters with Loaded Data ---
+    // If the user navigated to the Competency tab while data was still loading,
+    // the dropdowns would have been empty. Now that fullEmployeeData is ready, we populate them.
+    if (competencyViewInitialized) {
+        console.log("Data arrived. Refreshing Competency filters...");
+        populateCompetencyFilters(); // Refresh Individual Profile Filters
+        populateHeatmapFilters();    // Refresh Team Heatmap Filters
+    }
+    // --- FIX END ---
   }
 
 function updateNotificationBadges(counts) {
@@ -4595,57 +5069,41 @@ var chartInstances = {}; // To keep track of charts and destroy them before redr
 function initializeCompetencyView() {
     console.log("Initializing Competency View...");
     competencyViewInitialized = true;
-    
-    // --- 1. Setup Employee Dropdown (Individual Profile) ---
-    const select = document.getElementById('competency-employee-select');
-    if (select) {
-        select.innerHTML = '<option>Loading employees...</option>';
-        google.charts.load('current', {packages:['gauge']});
+    google.charts.load('current', {packages:['gauge']});
 
-        google.script.run.withSuccessHandler(response => {
-            if (response.error) {
-                select.innerHTML = `<option disabled selected>Error: ${response.error}</option>`;
-                return;
-            }
-            select.innerHTML = '<option value="">-- Select an Employee --</option>';
-            response.forEach(emp => {
-                const option = document.createElement('option');
-                option.value = emp.code;
-                option.textContent = emp.name;
-                select.appendChild(option);
-            });
-        }).getCompetencyEmployeeList();
-
-        select.addEventListener('change', (event) => {
-            const employeeId = event.target.value;
-            if (employeeId) {
-                drawCompetencyDashboard(employeeId); 
-            } else {
-                const idsToHide = ['competency-summary-container', 'competency-history-container', 
-                                   'competency-charts-container', 'team-competency-section', 
-                                   'individual-profile-content'];
-                idsToHide.forEach(id => {
-                    const el = document.getElementById(id);
-                    if(el) el.style.display = 'none';
-                });
-            }
-        });
+    // --- 1. Setup Dynamic Filters (Individual & Heatmap) ---
+    if (typeof fullEmployeeData !== 'undefined' && fullEmployeeData.length > 0) {
+        populateCompetencyFilters();
+        populateHeatmapFilters();
+    } else {
+        setTimeout(() => {
+             if (typeof fullEmployeeData !== 'undefined') {
+                 populateCompetencyFilters();
+                 populateHeatmapFilters();
+             }
+        }, 1000);
     }
 
-    // --- 2. Setup View Toggles (Profile vs Heatmap) ---
+    // --- 2. Setup View Toggles (With Dynamic Title Change) ---
     const individualProfileButton = document.getElementById('show-individual-profile');
     const teamHeatmapButton = document.getElementById('show-team-heatmap');
     
     const individualProfileDropdownView = document.getElementById('individual-profile-view');
     const individualProfileContentView = document.getElementById('individual-profile-content');
     const teamHeatmapView = document.getElementById('team-competency-section');
+    const sectionTitle = document.getElementById('competency-card-title'); // <--- NEW TARGET
 
     if (individualProfileButton && teamHeatmapButton) {
         individualProfileButton.addEventListener('click', () => {
+            // Update View
             individualProfileDropdownView.style.display = 'block';
             individualProfileContentView.style.display = 'block';
             teamHeatmapView.style.display = 'none';
             
+            // Update Title
+            if(sectionTitle) sectionTitle.textContent = "Employee Competency Profile";
+
+            // Update Buttons
             individualProfileButton.classList.add('bg-white', 'shadow', 'text-blue-700');
             individualProfileButton.classList.remove('text-gray-600', 'hover:bg-gray-300');
             teamHeatmapButton.classList.add('text-gray-600', 'hover:bg-gray-300');
@@ -4653,10 +5111,15 @@ function initializeCompetencyView() {
         });
 
         teamHeatmapButton.addEventListener('click', () => {
+            // Update View
             individualProfileDropdownView.style.display = 'none';
             individualProfileContentView.style.display = 'none';
             teamHeatmapView.style.display = 'block';
+
+            // Update Title
+            if(sectionTitle) sectionTitle.textContent = "Team Competency Heatmap";
             
+            // Update Buttons
             teamHeatmapButton.classList.add('bg-white', 'shadow', 'text-blue-700');
             teamHeatmapButton.classList.remove('text-gray-600', 'hover:bg-gray-300');
             individualProfileButton.classList.add('text-gray-600', 'hover:bg-gray-300');
@@ -4664,65 +5127,45 @@ function initializeCompetencyView() {
         });
     }
 
-    // --- 3. Setup Department Dropdown (Team Heatmap) - WITH RETRY LOGIC ---
-    const heatmapDeptSelect = document.getElementById('heatmap-department-select');
-    
-    // Inner function to populate data, or retry if not ready
-    const populateDepartments = () => {
-        if (!heatmapDeptSelect) return;
-
-        // Check if the global data (dropdownListData) is ready
-        if (typeof dropdownListData !== 'undefined' && dropdownListData.departments) {
-            heatmapDeptSelect.innerHTML = '<option value="">-- Select a Department --</option>';
-            
-            if (dropdownListData.departments.length > 0) {
-                dropdownListData.departments.forEach(dept => {
-                    const option = document.createElement('option');
-                    option.value = dept;
-                    option.textContent = dept;
-                    heatmapDeptSelect.appendChild(option);
-                });
-            } else {
-                const option = document.createElement('option');
-                option.text = "No departments found";
-                heatmapDeptSelect.add(option);
-            }
-        } else {
-            // Data not ready yet? Wait 500ms and try again
-            console.log("Waiting for department list data...");
-            heatmapDeptSelect.innerHTML = '<option>Loading Departments...</option>';
-            setTimeout(populateDepartments, 500);
-        }
-    };
-
-    if (heatmapDeptSelect) {
-        // Start the population process
-        populateDepartments();
-
-        heatmapDeptSelect.addEventListener('change', (event) => {
-            const department = event.target.value;
-            if (department) {
-                drawTeamCompetencyHeatmap(department);
-            } else {
-                document.getElementById('heatmap-container').innerHTML = '';
-                const legend = document.getElementById('heatmap-legend');
-                if (legend) legend.style.display = 'none';
-            }
-        });
-    }
-
-    // --- 4. Initial Visibility Settings ---
+    // --- 4. Initial Visibility ---
     if (individualProfileDropdownView) individualProfileDropdownView.style.display = 'block';
     if (individualProfileContentView) individualProfileContentView.style.display = 'block';
-    
-    const legend = document.getElementById('heatmap-legend');
-    if (legend) legend.style.display = 'none';
+    if (document.getElementById('heatmap-legend')) document.getElementById('heatmap-legend').style.display = 'none';
 }
 
 function openRequestModal() {
-  document.getElementById('request-modal').style.display = 'flex';
-  document.getElementById('request-type').addEventListener('change', handleRequestTypeChange);
+  // --- FIX: RESET EDIT MODE ARTIFACTS ---
+  // 1. Clear the hidden Request ID so we don't overwrite existing rows
+  const hiddenId = document.getElementById('edit-request-id');
+  if (hiddenId) hiddenId.value = '';
 
+  // 2. Reset Submit Button Text & Color
+  const submitBtn = document.querySelector('#request-form button[onclick="submitRequest()"]');
+  if (submitBtn) {
+      submitBtn.textContent = "Submit Request";
+      submitBtn.classList.remove('bg-yellow-600');
+      submitBtn.classList.add('bg-blue-600');
+  }
+
+  // 3. Clear "Previous documents attached" message/flag
+  const form = document.getElementById('request-form');
+  if (form) delete form.dataset.hasAttachments;
+  
+  const oldMsg = document.getElementById('existing-docs-msg');
+  if (oldMsg) oldMsg.remove();
+
+  // --- OPEN MODAL LOGIC ---
+  document.getElementById('request-modal').style.display = 'flex';
+  document.getElementById('request-fields').innerHTML = ''; // Clear old fields
+  document.getElementById('request-form').reset(); // Reset form inputs
+  
+  // Re-attach event listener
+  const typeSelect = document.getElementById('request-type');
+  // Remove old listener to prevent duplicates, then add new one
+  typeSelect.removeEventListener('change', handleRequestTypeChange); 
+  typeSelect.addEventListener('change', handleRequestTypeChange);
+
+  // Load Approvers
   const approverSelect = document.getElementById('approver-email-select');
   approverSelect.innerHTML = '<option value="">Loading approvers...</option>';
   
@@ -4748,41 +5191,217 @@ function openRequestModal() {
 
 function closeRequestModal() {
   document.getElementById('request-modal').style.display = 'none';
+  
+  // Reset Edit Mode Variables
+  const hiddenId = document.getElementById('edit-request-id');
+  if(hiddenId) hiddenId.value = '';
+  
+  const submitBtn = document.querySelector('#request-form button[onclick="submitRequest()"]');
+  if(submitBtn) {
+      submitBtn.textContent = "Submit Request";
+      submitBtn.classList.remove('bg-yellow-600');
+      submitBtn.classList.add('bg-blue-600');
+  }
+
+  // Clean up DOM
   document.getElementById('request-type').removeEventListener('change', handleRequestTypeChange);
   document.getElementById('request-fields').innerHTML = '';
   document.getElementById('request-form').reset();
+  
+  const oldMsg = document.getElementById('existing-docs-msg');
+  if (oldMsg) oldMsg.remove();
 }
+
+// --- NEW: DYNAMIC REQUEST FILTER LOGIC ---
+
+/**
+ * Initializes the 5-level filter logic for the Request Modal.
+ * This replaces the simple employee dropdown initialization.
+ */
+// --- NEW: DYNAMIC REQUEST FILTER LOGIC (UPDATED) ---
+
+function initializeRequestFilterSystem() {
+  // Initial population of Division data
+  const divisions = [...new Set(fullEmployeeData.map(e => e.division).filter(String))].sort();
+  
+  // Helper to visually reset downstream dropdowns to empty boxes
+  const resetToEmpty = (id) => {
+    // Re-create the dropdown with an empty list []
+    createSearchableDropdown(id, [], null, null, null);
+    
+    // Optional: Clear the actual input value and add a visual indicator indicating it's waiting for data
+    const container = document.getElementById(id);
+    const input = container.querySelector('.searchable-dropdown-input');
+    if(input) {
+        input.value = '';
+        input.placeholder = "Select prev. filter first..."; // Helpful hint
+        container.setAttribute('data-empty', 'true'); // For CSS styling
+    }
+  };
+
+  // --- DEFINE HANDLERS (Reverse Order) ---
+
+  // 4. Section -> Employee Handler
+  function handleSectionChange(division, group, dept, section) {
+    const employees = fullEmployeeData
+      .filter(e => e.division === division && e.group === group && e.department === dept && e.section === section && e.employeeId)
+      .map(e => ({ name: e.employeeName, id: e.employeeId }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    // Populate Employee Dropdown
+    createSearchableDropdown('req-filter-employee', employees, 'name', 'id', (empId) => {
+       autoPopulateRequestFields(empId);
+       document.getElementById('req-filter-employee').removeAttribute('data-empty');
+    });
+    document.getElementById('req-filter-employee').removeAttribute('data-empty');
+  }
+
+  // 3. Department -> Section Handler
+  function handleDeptChange(division, group, dept) {
+    const sections = [...new Set(fullEmployeeData
+      .filter(e => e.division === division && e.group === group && e.department === dept)
+      .map(e => e.section).filter(String))].sort();
+
+    // Populate Section Dropdown
+    createSearchableDropdown('req-filter-section', sections, null, null, (selectedSec) => handleSectionChange(division, group, dept, selectedSec));
+    document.getElementById('req-filter-section').removeAttribute('data-empty');
+
+    // Reset Employee
+    resetToEmpty('req-filter-employee');
+  }
+
+  // 2. Group -> Department Handler
+  function handleGroupChange(division, group) {
+    const depts = [...new Set(fullEmployeeData
+      .filter(e => e.division === division && e.group === group)
+      .map(e => e.department).filter(String))].sort();
+
+    // Populate Department Dropdown
+    createSearchableDropdown('req-filter-department', depts, null, null, (selectedDept) => handleDeptChange(division, group, selectedDept));
+    document.getElementById('req-filter-department').removeAttribute('data-empty');
+
+    // Reset downstream
+    resetToEmpty('req-filter-section');
+    resetToEmpty('req-filter-employee');
+  }
+
+  // --- INITIALIZATION ---
+
+  // 1. Initialize Division (with data)
+  createSearchableDropdown('req-filter-division', divisions, null, null, (selectedDiv) => {
+    // Filter Groups based on Division
+    const groups = [...new Set(fullEmployeeData
+      .filter(e => e.division === selectedDiv)
+      .map(e => e.group).filter(String))].sort();
+    
+    // Populate Group Dropdown
+    createSearchableDropdown('req-filter-group', groups, null, null, (selectedGrp) => handleGroupChange(selectedDiv, selectedGrp));
+    document.getElementById('req-filter-group').removeAttribute('data-empty');
+
+    // Reset downstream
+    resetToEmpty('req-filter-department');
+    resetToEmpty('req-filter-section');
+    resetToEmpty('req-filter-employee');
+  });
+
+  // ⚠️ KEY CHANGE HERE: Immediately initialize the rest as empty boxes ⚠️
+  resetToEmpty('req-filter-group');
+  resetToEmpty('req-filter-department');
+  resetToEmpty('req-filter-section');
+  resetToEmpty('req-filter-employee');
+}
+
+
+/**
+ * Auto-populates the request form based on the selected Employee ID.
+ */
+function autoPopulateRequestFields(employeeId) {
+  const employee = fullEmployeeData.find(e => String(e.employeeId).trim() === String(employeeId).trim());
+  
+  if (!employee) return;
+
+  // Common fields mapping (ID -> Value)
+  const fieldMap = {
+    'request-EmployeeID': employee.employeeId,
+    'request-DateHired': employee.dateHired,
+    'request-DateOfBirth': employee.dateOfBirth,
+    'request-Gender': employee.gender,
+    'current-position-id': employee.positionId,
+    'current-reporting-to': employee.managerName,
+    'current-job-title': employee.jobTitle,
+    'current-name': employee.employeeName,
+    
+    // --- NEW: Map additional fields for Resignation ---
+    'request-Division': employee.division,
+    'request-Group': employee.group,
+    'request-Department': employee.department,
+    'request-Section': employee.section,
+    'request-JobTitle': employee.jobTitle,
+    'request-Level': employee.level,
+    'request-JobLevel': employee.jobLevel,
+    'request-ContractType': employee.contractType
+  };
+
+  // Fill fields if they exist in the DOM
+  for (const [id, value] of Object.entries(fieldMap)) {
+    const el = document.getElementById(id);
+    if (el) {
+       el.value = value || '';
+    }
+  }
+
+  // Special handling for the Dropdown Input itself
+  const empInput = document.querySelector('#req-filter-employee .searchable-dropdown-input');
+  if (empInput) empInput.value = employee.employeeName;
+}
+
 
 function handleRequestTypeChange() {
   const requestType = document.getElementById('request-type').value;
   const fieldsContainer = document.getElementById('request-fields');
   fieldsContainer.innerHTML = '';
 
-  let fieldsHtml = '';
+  if (!requestType) return;
 
-  const fileUploadHtml = `
-    <div class="md:col-span-2">
-      <label class="block font-medium">Supporting Documents</label>
-      <div class="mt-1">
-        <input type="file" id="support-docs-input" multiple class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-      </div>
-      <div id="support-docs-list" class="mt-2 text-sm text-gray-600"></div>
-      <p id="file-limit-warning" class="text-red-500 text-xs mt-1" style="display: none;">You can upload a maximum of 5 files.</p>
-    </div>
+  const FILTER_HTML = `
+      <div><label class="block font-medium">Filter by Division</label><div id="req-filter-division" class="searchable-dropdown"></div></div>
+      <div><label class="block font-medium">Filter by Group</label><div id="req-filter-group" class="searchable-dropdown"></div></div>
+      <div><label class="block font-medium">Filter by Department</label><div id="req-filter-department" class="searchable-dropdown"></div></div>
+      <div><label class="block font-medium">Filter by Section</label><div id="req-filter-section" class="searchable-dropdown"></div></div>
+      <div class="md:col-span-2"><label class="block font-medium text-blue-700">Select Employee to Auto-Fill Request Details</label><div id="req-filter-employee" class="searchable-dropdown"></div></div>
+      <div class="md:col-span-2 border-b border-gray-200 my-2"></div>
   `;
+
+  const EMPLOYEE_DETAILS_HTML = `
+      <div><label class="block font-medium">Employee ID</label><input type="text" id="request-EmployeeID" name="EmployeeID" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+      <div><label class="block font-medium">Date Hired</label><input type="text" id="request-DateHired" name="DateHired" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+      <div><label class="block font-medium">Date of Birth</label><input type="text" id="request-DateOfBirth" name="DateOfBirth" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+      <div><label class="block font-medium">Gender</label><input type="text" id="request-Gender" name="Gender" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+  `;
+
+  const RESIGNATION_DETAILS_HTML = `
+      <div><label class="block font-medium">Division</label><input type="text" id="request-Division" name="Division" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+      <div><label class="block font-medium">Group</label><input type="text" id="request-Group" name="Group" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+      <div><label class="block font-medium">Department</label><input type="text" id="request-Department" name="Department" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+      <div><label class="block font-medium">Section</label><input type="text" id="request-Section" name="Section" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+      <div><label class="block font-medium">Job Title</label><input type="text" id="request-JobTitle" name="JobTitle" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+      <div><label class="block font-medium">Level</label><input type="text" id="request-Level" name="Level" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+      <div><label class="block font-medium">Job Level</label><input type="text" id="request-JobLevel" name="JobLevel" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+      <div><label class="block font-medium">Contract Type</label><input type="text" id="request-ContractType" name="ContractType" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+  `;
+
+  const attachmentsHtml = generateAttachmentsHTML(requestType);
+  let fieldsHtml = '';
+  let shouldUseFilters = false;
 
   switch (requestType) {
     case 'Lateral Transfer':
     case 'Promotion':
     case 'Internal Transfer':
+      shouldUseFilters = true;
       fieldsHtml = `
-        <div><label class="block font-medium">Employee</label><div id="employee-request-dropdown" class="searchable-dropdown"></div></div>
-        <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div><label class="block font-medium">Employee ID</label><input type="text" id="request-EmployeeID" name="EmployeeID" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
-          <div><label class="block font-medium">Date Hired</label><input type="text" id="request-DateHired" name="DateHired" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
-          <div><label class="block font-medium">Date of Birth</label><input type="text" id="request-DateOfBirth" name="DateOfBirth" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
-          <div><label class="block font-medium">Gender</label><input type="text" id="request-Gender" name="Gender" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
-        </div>
+        ${FILTER_HTML}
+        ${EMPLOYEE_DETAILS_HTML}
         <div><label class="block font-medium">Current Position ID</label><input type="text" id="current-position-id" name="CurrentPositionID" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
         <div><label class="block font-medium">New Position ID</label><div id="new-position-dropdown" class="searchable-dropdown"></div></div>
         <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -4791,10 +5410,12 @@ function handleRequestTypeChange() {
         </div>
         <div><label class="block font-medium">Effective Date</label><input type="date" id="effective-date-request" name="EffectiveDate" class="mt-1 p-2 w-full border rounded"></div>
         <div class="md:col-span-2"><label class="block font-medium">Justification</label><textarea id="justification" name="Justification" class="mt-1 p-2 w-full border rounded"></textarea></div>
-        ${fileUploadHtml}
+        ${attachmentsHtml} 
       `;
       break;
+
     case 'Hiring of a new employee (newly created position)':
+      shouldUseFilters = false;
       fieldsHtml = `
         <div class="md:col-span-2 font-bold text-indigo-700">Position Details</div>
         <div><label class="block font-medium">Division</label><div id="request-division-dropdown" class="searchable-dropdown"></div></div>
@@ -4805,16 +5426,16 @@ function handleRequestTypeChange() {
         <div><label class="block font-medium">New Position Level</label><div id="new-level-dropdown" class="searchable-dropdown"></div></div>
         <div><label class="block font-medium">Reporting To</label><div id="reporting-to-request-dropdown" class="searchable-dropdown"></div></div>
         <div><label class="block font-medium">Reporting To Employee ID</label><input type="text" id="reporting-to-id-request" name="ReportingToId" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
-        
         <div class="md:col-span-2 mt-4"><label class="block font-medium">Justification</label><textarea id="justification" name="Justification" class="mt-1 p-2 w-full border rounded" rows="3"></textarea></div>
-        ${fileUploadHtml}
+        ${attachmentsHtml}
       `;
       break;
+
     case 'Hiring of a new employee (replacement for vacancy)':
+      shouldUseFilters = false;
       fieldsHtml = `
         <div class="md:col-span-2 font-bold text-indigo-700">Position to be Filled</div>
         <div class="md:col-span-2"><label class="block font-medium">Vacant Position ID</label><div id="vacant-position-dropdown" class="searchable-dropdown"></div></div>
-        
         <div><label class="block font-medium">Job Title</label><input type="text" id="request-job-title" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
         <div><label class="block font-medium">Reporting To</label><input type="text" id="request-reporting-to" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
         <div><label class="block font-medium">Reporting To ID</label><input type="text" id="request-reporting-to-id" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
@@ -4824,76 +5445,138 @@ function handleRequestTypeChange() {
         <div><label class="block font-medium">Section</label><input type="text" id="request-section" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
         <div><label class="block font-medium">Level</label><input type="text" id="request-level" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
         <div><label class="block font-medium">Effective Vacancy Date</label><input type="date" id="effective-date-request-readonly" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
-        
         <div class="md:col-span-2 mt-4 font-bold text-indigo-700">Request Details</div>
         <div class="md:col-span-2"><label class="block font-medium">Justification</label><textarea id="justification" name="Justification" class="mt-1 p-2 w-full border rounded"></textarea></div>
-        ${fileUploadHtml}
+        ${attachmentsHtml}
       `;
       break;
+
+    case 'Resignation/Separation':
+      shouldUseFilters = true;
+      fieldsHtml = `
+        ${FILTER_HTML}
+        ${EMPLOYEE_DETAILS_HTML}
+        ${RESIGNATION_DETAILS_HTML}
+        <div><label class="block font-medium">New Status</label><div id="new-status-dropdown" class="searchable-dropdown"></div></div>
+        <div><label class="block font-medium">Reason for Leaving</label><div id="reason-leaving-request-dropdown" class="searchable-dropdown"></div></div>
+        <div><label class="block font-medium">Effective Date</label><input type="date" id="effective-date-request" name="EffectiveDate" class="mt-1 p-2 w-full border rounded"></div>
+        <div class="md:col-span-2"><label class="block font-medium">Remarks/Justification</label><textarea id="justification" name="Justification" class="mt-1 p-2 w-full border rounded"></textarea></div>
+        ${attachmentsHtml}
+      `;
+      break;
+
+    case 'Change in Employment Status':
+    case 'Regularization':
+      shouldUseFilters = true;
+      fieldsHtml = `
+        ${FILTER_HTML}
+        ${EMPLOYEE_DETAILS_HTML}
+        <div><label class="block font-medium">New Status</label><div id="new-status-dropdown" class="searchable-dropdown"></div></div>
+        <div><label class="block font-medium">Effective Date</label><input type="date" id="effective-date-request" name="EffectiveDate" class="mt-1 p-2 w-full border rounded"></div>
+        <div class="md:col-span-2"><label class="block font-medium">Remarks/Justification</label><textarea id="justification" name="Justification" class="mt-1 p-2 w-full border rounded"></textarea></div>
+        ${attachmentsHtml}
+      `;
+      break;
+
+    case 'Change in Reporting line':
+      shouldUseFilters = true;
+      fieldsHtml = `
+        ${FILTER_HTML}
+        ${EMPLOYEE_DETAILS_HTML}
+        <div><label class="block font-medium">Current Reporting To</label><input type="text" id="current-reporting-to" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+        <div><label class="block font-medium">New Reporting To</label><div id="new-reporting-to-dropdown" class="searchable-dropdown"></div></div>
+        <div><label class="block font-medium">Effective Date</label><input type="date" id="effective-date-request" name="EffectiveDate" class="mt-1 p-2 w-full border rounded"></div>
+        <div class="md:col-span-2"><label class="block font-medium">Remarks/Justification</label><textarea id="justification" name="Justification" class="mt-1 p-2 w-full border rounded"></textarea></div>
+        ${attachmentsHtml}
+      `;
+      break;
+
+    case 'Job Title/Position Change (without promotion)':
+      shouldUseFilters = true;
+      fieldsHtml = `
+        ${FILTER_HTML}
+        ${EMPLOYEE_DETAILS_HTML}
+        <div><label class="block font-medium">Current Job Title</label><input type="text" id="current-job-title" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+        <div><label class="block font-medium">New Job Title</label><div id="new-job-title-dropdown" class="searchable-dropdown"></div></div>
+        <div><label class="block font-medium">Effective Date</label><input type="date" id="effective-date-request" name="EffectiveDate" class="mt-1 p-2 w-full border rounded"></div>
+        <div class="md:col-span-2"><label class="block font-medium">Remarks/Justification</label><textarea id="justification" name="Justification" class="mt-1 p-2 w-full border rounded"></textarea></div>
+        ${attachmentsHtml}
+      `;
+      break;
+
+    case 'Name Correction/Update of Employee Information':
+      shouldUseFilters = true;
+      fieldsHtml = `
+        ${FILTER_HTML}
+        ${EMPLOYEE_DETAILS_HTML}
+        <div><label class="block font-medium">Current Name</label><input type="text" id="current-name" readonly class="mt-1 p-2 w-full border rounded bg-gray-100"></div>
+        <div><label class="block font-medium">New/Corrected Name</label><input type="text" id="new-employee-name" name="NewName" class="mt-1 p-2 w-full border rounded"></div>
+        <div class="md:col-span-2"><label class="block font-medium">Remarks/Justification</label><textarea id="justification" name="Justification" class="mt-1 p-2 w-full border rounded"></textarea></div>
+        ${attachmentsHtml}
+      `;
+      break;
+
+    case 'Position on Hold/Cancelled/Deleted':
+      shouldUseFilters = false; 
+      fieldsHtml = `
+        <div class="md:col-span-2"><label class="block font-medium">Position ID</label><div id="position-id-dropdown" class="searchable-dropdown"></div></div>
+        <div class="md:col-span-2"><label class="block font-medium">Action</label>
+            <select name="Action" class="mt-1 p-2 w-full border rounded">
+                <option>On Hold</option>
+                <option>Cancelled</option>
+                <option>Deleted</option>
+            </select>
+        </div>
+        <div class="md:col-span-2"><label class="block font-medium">Remarks/Justification</label><textarea id="justification" name="Justification" class="mt-1 p-2 w-full border rounded"></textarea></div>
+        ${attachmentsHtml}
+      `;
+      break;
+
+    default:
+        fieldsHtml = '<p class="text-gray-500 md:col-span-2">This request type is not yet implemented.</p>';
+        break;
   }
+  
   fieldsContainer.innerHTML = fieldsHtml;
 
-  const fileInput = document.getElementById('support-docs-input');
-  if (fileInput) {
-    fileInput.addEventListener('change', handleFileUpload);
-  }
+  if (shouldUseFilters) initializeRequestFilterSystem();
 
-  // Populate dropdowns
+  // --- RE-INITIALIZATION LOGIC ---
   if (requestType.includes('Transfer') || requestType.includes('Promotion')) {
-    createSearchableDropdown('employee-request-dropdown', dropdownListData.managers || [], 'name', 'name', (employeeName) => { // Use name for lookup
-      const employee = fullEmployeeData.find(e => e.employeeName === employeeName);
-      if (employee) {
-        document.getElementById('current-position-id').value = employee.positionId;
-        
-        google.script.run
-          .withSuccessHandler(details => {
-            if (details) {
-              document.getElementById('request-EmployeeID').value = details.employeeId || '';
-              document.getElementById('request-DateHired').value = details.dateHired || '';
-              document.getElementById('request-DateOfBirth').value = details.dateOfBirth || '';
-              document.getElementById('request-Gender').value = details.gender || '';
-            }
-          })
-          .getEmployeeDetails(employeeName);
-
-      } else {
-         document.getElementById('current-position-id').value = '';
-         document.getElementById('request-EmployeeID').value = '';
-         document.getElementById('request-DateHired').value = '';
-         document.getElementById('request-DateOfBirth').value = '';
-         document.getElementById('request-Gender').value = '';
-      }
-    });
+    // --- FIX: Filter for VACANT positions only ---
     const vacantPositions = fullEmployeeData.filter(p => !p.employeeId).map(p => p.positionId);
+    
     createSearchableDropdown('new-position-dropdown', vacantPositions, null, null, (positionId) => {
         const input = document.querySelector('#new-position-dropdown .searchable-dropdown-input');
-        input.name = "NewPositionID";
-        input.value = positionId;
-
+        input.name = "NewPositionID"; input.value = positionId;
         const selectedPosition = fullEmployeeData.find(p => p.positionId === positionId);
         if (selectedPosition) {
             document.getElementById('request-NewReportingTo').value = selectedPosition.managerName || '';
             document.getElementById('request-NewReportingToId').value = selectedPosition.managerEmployeeId || '';
-        } else {
-            document.getElementById('request-NewReportingTo').value = '';
-            document.getElementById('request-NewReportingToId').value = '';
         }
     });
+
+    // --- BLUR LISTENER: Allows searching whole DB if user types manual ID ---
+    const newPosInput = document.querySelector('#new-position-dropdown .searchable-dropdown-input');
+    if (newPosInput) {
+        newPosInput.addEventListener('blur', function() {
+            const typedId = this.value;
+            const selectedPosition = fullEmployeeData.find(p => p.positionId === typedId);
+            if (selectedPosition) {
+                document.getElementById('request-NewReportingTo').value = selectedPosition.managerName || '';
+                document.getElementById('request-NewReportingToId').value = selectedPosition.managerEmployeeId || '';
+            } else {
+                document.getElementById('request-NewReportingTo').value = '';
+                document.getElementById('request-NewReportingToId').value = '';
+            }
+        });
+    }
   }
+
   if (requestType.includes('newly created')) {
-    createSearchableDropdown('new-job-title-dropdown', dropdownListData.jobtitle || [], null, null, (val) => {
-        const input = document.querySelector('#new-job-title-dropdown .searchable-dropdown-input');
-        input.name = "NewJobTitle";
-    });
-    createSearchableDropdown('new-level-dropdown', dropdownListData.level || [], null, null, (val) => {
-        const input = document.querySelector('#new-level-dropdown .searchable-dropdown-input');
-        input.name = "NewLevel";
-    });
-    createSearchableDropdown('reporting-to-request-dropdown', dropdownListData.managers || [], 'name', 'id', (employeeId) => {
-      document.getElementById('reporting-to-id-request').value = employeeId;
-    });
-    
-    // Dependent dropdowns for new position location
+    createSearchableDropdown('new-job-title-dropdown', dropdownListData.jobtitle || [], null, null, (val) => { document.querySelector('#new-job-title-dropdown .searchable-dropdown-input').name = "NewJobTitle"; });
+    createSearchableDropdown('new-level-dropdown', dropdownListData.level || [], null, null, (val) => { document.querySelector('#new-level-dropdown .searchable-dropdown-input').name = "NewLevel"; });
+    createSearchableDropdown('reporting-to-request-dropdown', dropdownListData.managers || [], 'name', 'id', (id) => { document.getElementById('reporting-to-id-request').value = id; });
     createSearchableDropdown('request-division-dropdown', dropdownListData.divisions || [], null, null, (sel) => updateRequestLocationDropdowns('division', sel));
     createSearchableDropdown('request-group-dropdown', [], null, null, (sel) => updateRequestLocationDropdowns('group', sel));
     createSearchableDropdown('request-department-dropdown', [], null, null, (sel) => updateRequestLocationDropdowns('department', sel));
@@ -4906,76 +5589,108 @@ function handleRequestTypeChange() {
       if (position) {
         document.getElementById('request-job-title').value = position.jobTitle || '';
         document.getElementById('request-reporting-to').value = position.managerName || '';
-        document.getElementById('request-reporting-to-id').value = position.managerEmployeeId || ''; // Corrected
+        document.getElementById('request-reporting-to-id').value = position.managerEmployeeId || ''; 
         document.getElementById('request-division').value = position.division || '';
         document.getElementById('request-group').value = position.group || '';
         document.getElementById('request-department').value = position.department || '';
         document.getElementById('request-section').value = position.section || '';
         document.getElementById('request-level').value = position.level || '';
-        
-        google.script.run
-          .withSuccessHandler(info => {
-            if (info && info.dateBecameVacant) {
-              document.getElementById('effective-date-request-readonly').value = info.dateBecameVacant;
-            } else {
-              document.getElementById('effective-date-request-readonly').value = '';
-            }
-          })
-          .getLastIncumbentInfo(positionId);
-
-      } else {
-        // Clear fields if no position is found
-        document.getElementById('request-job-title').value = '';
-        document.getElementById('request-reporting-to').value = '';
-        document.getElementById('request-reporting-to-id').value = '';
-        document.getElementById('request-division').value = '';
-        document.getElementById('request-group').value = '';
-        document.getElementById('request-department').value = '';
-        document.getElementById('request-section').value = '';
-        document.getElementById('request-level').value = '';
-        document.getElementById('effective-date-request-readonly').value = '';
+        google.script.run.withSuccessHandler(info => { if (info && info.dateBecameVacant) document.getElementById('effective-date-request-readonly').value = info.dateBecameVacant; }).getLastIncumbentInfo(positionId);
       }
     });
+  }
+  
+  if (requestType.includes('Status') || requestType.includes('Regularization') || requestType.includes('Resignation') || requestType.includes('Separation')) {
+      createSearchableDropdown('new-status-dropdown', dropdownListData.status || [], null, null, (val) => { document.querySelector('#new-status-dropdown .searchable-dropdown-input').name = "NewStatus"; });
+      
+      if (requestType.includes('Resignation') || requestType.includes('Separation')) {
+          createSearchableDropdown('reason-leaving-request-dropdown', dropdownListData.reasonforleaving || [], null, null, (val) => {
+              const input = document.querySelector('#reason-leaving-request-dropdown .searchable-dropdown-input');
+              input.name = "ReasonForLeaving";
+          });
+      }
+  }
+  
+  if (requestType.includes('Reporting line')) {
+      createSearchableDropdown('new-reporting-to-dropdown', dropdownListData.managers || [], 'name', 'name', (val) => { document.querySelector('#new-reporting-to-dropdown .searchable-dropdown-input').name = "NewReportingToName"; });
+  }
+  if (requestType.includes('Job Title/Position Change')) {
+      createSearchableDropdown('new-job-title-dropdown', dropdownListData.jobtitle || [], null, null, (val) => { document.querySelector('#new-job-title-dropdown .searchable-dropdown-input').name = "NewJobTitle"; });
+  }
+  if (requestType.includes('Position on Hold')) {
+      const allPositions = fullEmployeeData.map(p => p.positionId);
+      createSearchableDropdown('position-id-dropdown', allPositions, null, null, (val) => { document.querySelector('#position-id-dropdown .searchable-dropdown-input').name = "PositionID"; });
   }
 }
 
 function submitRequest() {
   const requestType = document.getElementById('request-type').value;
-  if (!requestType) {
-    alert('Please select a request type.');
-    return;
-  }
+  if (!requestType) { alert('Please select a request type.'); return; }
 
   const approver = document.getElementById('approver-email-select').value;
-  if (!approver) {
-    alert('Please select an approver.');
+  // --- FIX: Prevent submission if no approver selected ---
+  if (!approver || approver === "") { 
+    alert('Please select an approver before submitting.'); 
+    return; 
+  }
+
+  if (requestType.includes('Position on Hold') || requestType.includes('Cancelled') || requestType.includes('Deleted')) {
+      const posId = document.querySelector('#position-id-dropdown .searchable-dropdown-input')?.value;
+      const action = document.querySelector('select[name="Action"]')?.value;
+      if (!posId || !action) { alert('Please select both a Position ID and an Action.'); return; }
+  }
+
+  if (requestType.includes('Promotion') || requestType.includes('Transfer')) {
+      const newPosId = document.querySelector('#new-position-dropdown .searchable-dropdown-input')?.value;
+      if (!newPosId) { alert('Please select a New Position ID.'); return; }
+  }
+
+  // File Validation
+  const form = document.getElementById('request-form');
+  const hasExistingFiles = form.dataset.hasAttachments === 'true';
+  
+  const attachmentInputs = document.querySelectorAll('.dynamic-attachment-input');
+  let collectedFiles = [];
+  let missingRequired = false;
+
+  document.querySelectorAll('.error-message').forEach(el => el.classList.remove('show-error'));
+  document.querySelectorAll('.dynamic-attachment-input').forEach(el => el.classList.remove('input-error'));
+  document.getElementById('global-file-error').style.display = 'none';
+
+  attachmentInputs.forEach(input => {
+    const file = input.files[0];
+    const isRequired = input.dataset.required === 'true';
+
+    if (isRequired && !file && !hasExistingFiles) {
+      input.classList.add('input-error');
+      if(input.nextElementSibling && input.nextElementSibling.classList.contains('error-message')) {
+          input.nextElementSibling.classList.add('show-error');
+      }
+      missingRequired = true;
+    }
+
+    if (file) collectedFiles.push(file);
+  });
+
+  if (missingRequired) {
+    alert("Please upload all required attachments.");
     return;
   }
 
-  const fileInput = document.getElementById('support-docs-input');
-  const files = fileInput.files;
+  showSavingOverlay('Processing Request...');
 
-  if (files.length === 0) {
-    alert('You must add at least one supporting document.');
-    return;
-  }
-  if (files.length > 5) {
-    alert('You cannot upload more than 5 documents.');
-    return;
-  }
-
-  showSavingOverlay('Processing Files...');
-
-  const filePromises = Array.from(files).map(file => {
+  const filePromises = Array.from(attachmentInputs).map(input => {
+    const file = input.files[0];
+    if (!file) return Promise.resolve(null); 
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const fileData = {
+        resolve({
           name: file.name,
           mimeType: file.type,
-          content: e.target.result.split(',')[1] // Get base64 content
-        };
-        resolve(fileData);
+          content: e.target.result.split(',')[1],
+          label: input.dataset.label
+        });
       };
       reader.onerror = reject;
       reader.readAsDataURL(file);
@@ -4983,43 +5698,51 @@ function submitRequest() {
   });
 
   Promise.all(filePromises).then(fileContents => {
+    const validFiles = fileContents.filter(file => file !== null);
+
+    let empName = document.querySelector('#req-filter-employee .searchable-dropdown-input')?.value;
+    if (!empName) empName = document.querySelector('#employee-request-dropdown .searchable-dropdown-input')?.value;
+
+    const hiddenIdInput = document.getElementById('edit-request-id');
+    const existingRequestId = hiddenIdInput ? hiddenIdInput.value : null;
+
     const requestData = {
-      // Common fields
+      RequestID: existingRequestId,
       RequestType: requestType,
-      ApproverEmail: document.getElementById('approver-email-select').value,
+      ApproverEmail: document.getElementById('approver-email-select').value, // This now grabs the correctly selected approver
       Justification: document.getElementById('justification')?.value,
       EffectiveDate: document.getElementById('effective-date-request')?.value,
-      files: fileContents,
-
-      // Transfer/Promotion fields
+      files: validFiles,
+      EmployeeName: empName,
       EmployeeID: document.getElementById('request-EmployeeID')?.value,
       DateHired: document.getElementById('request-DateHired')?.value,
       DateOfBirth: document.getElementById('request-DateOfBirth')?.value,
-      EmployeeName: document.querySelector('#employee-request-dropdown .searchable-dropdown-input')?.value,
-      CurrentPositionID: document.getElementById('current-position-id')?.value,
-      NewPositionID: document.querySelector('#new-position-dropdown .searchable-dropdown-input')?.value,
       Gender: document.getElementById('request-Gender')?.value,
+      Division: document.querySelector('#request-division-dropdown .searchable-dropdown-input')?.value || document.getElementById('request-Division')?.value,
+      Group: document.querySelector('#request-group-dropdown .searchable-dropdown-input')?.value || document.getElementById('request-Group')?.value,
+      Department: document.querySelector('#request-department-dropdown .searchable-dropdown-input')?.value || document.getElementById('request-Department')?.value,
+      Section: document.querySelector('#request-section-dropdown .searchable-dropdown-input')?.value || document.getElementById('request-Section')?.value,
+      JobTitle: document.querySelector('#new-job-title-dropdown .searchable-dropdown-input')?.value || document.getElementById('request-JobTitle')?.value,
+      Level: document.querySelector('#new-level-dropdown .searchable-dropdown-input')?.value || document.getElementById('request-Level')?.value,
+      JobLevel: document.getElementById('request-JobLevel')?.value,
+      ContractType: document.getElementById('request-ContractType')?.value,
+      CurrentPositionID: document.getElementById('current-position-id')?.value || document.querySelector('#position-id-dropdown .searchable-dropdown-input')?.value,
+      NewPositionID: document.querySelector('#new-position-dropdown .searchable-dropdown-input')?.value,
       NewReportingTo: document.getElementById('request-NewReportingTo')?.value,
       NewReportingToId: document.getElementById('request-NewReportingToId')?.value,
-
-      // New Position fields
-      NewJobTitle: document.querySelector('#new-job-title-dropdown .searchable-dropdown-input')?.value,
-      NewLevel: document.querySelector('#new-level-dropdown .searchable-dropdown-input')?.value,
-      Division: document.querySelector('#request-division-dropdown .searchable-dropdown-input')?.value,
-      Group: document.querySelector('#request-group-dropdown .searchable-dropdown-input')?.value,
-      Department: document.querySelector('#request-department-dropdown .searchable-dropdown-input')?.value,
-      Section: document.querySelector('#request-section-dropdown .searchable-dropdown-input')?.value,
+      NewJobTitle: document.querySelector('#new-job-title-dropdown .searchable-dropdown-input')?.value, 
+      NewLevel: document.querySelector('#new-level-dropdown .searchable-dropdown-input')?.value, 
       ReportingToId: document.getElementById('reporting-to-id-request')?.value,
       ReportingTo: document.querySelector('#reporting-to-request-dropdown .searchable-dropdown-input')?.value,
-      PositionStatus: document.querySelector('#position-status-request-dropdown .searchable-dropdown-input')?.value,
-
-      // Replacement fields
+      NewStatus: document.querySelector('#new-status-dropdown .searchable-dropdown-input')?.value, 
+      ReasonForLeaving: document.querySelector('#reason-leaving-request-dropdown .searchable-dropdown-input')?.value || document.querySelector('#new-status-dropdown .searchable-dropdown-input')?.value,
       VacantPositionID: document.querySelector('#vacant-position-dropdown .searchable-dropdown-input')?.value,
       NewEmployeeName: document.getElementById('new-employee-name')?.value,
       NewEmployeeID: document.getElementById('new-employee-id')?.value,
+      NewReportingToName: document.querySelector('#new-reporting-to-dropdown .searchable-dropdown-input')?.value,
+      Action: document.querySelector('select[name="Action"]')?.value
     };
     
-    // For replacement requests, overwrite/add fields with data from the readonly inputs
     if (requestType === 'Hiring of a new employee (replacement for vacancy)') {
         requestData.NewJobTitle = document.getElementById('request-job-title')?.value;
         requestData.ReportingTo = document.getElementById('request-reporting-to')?.value;
@@ -5029,20 +5752,14 @@ function submitRequest() {
         requestData.Department = document.getElementById('request-department')?.value;
         requestData.Section = document.getElementById('request-section')?.value;
         requestData.NewLevel = document.getElementById('request-level')?.value;
-        requestData.ContractType = document.getElementById('request-contract-type')?.value;
-        requestData.PositionStatus = document.getElementById('request-position-status')?.value;
     }
     
-    showSavingOverlay('Submitting Request...');
-
     google.script.run
       .withSuccessHandler(() => {
         hideSavingOverlay();
         alert('Request submitted successfully!');
         closeRequestModal();
-        if (document.getElementById('my-requests-view').classList.contains('active')) {
-          drawMyRequestsTable();
-        }
+        if (typeof refreshChangeRequestData === 'function') { refreshChangeRequestData(); }
       })
       .withFailureHandler((err) => {
         hideSavingOverlay();
@@ -5056,7 +5773,7 @@ function submitRequest() {
   });
 }
 
-function drawTeamCompetencyHeatmap(department) {
+function drawTeamCompetencyHeatmap(filters) {
     const loader = document.getElementById('heatmap-loader');
     const container = document.getElementById('heatmap-container');
     const legend = document.getElementById('heatmap-legend');
@@ -5069,11 +5786,11 @@ function drawTeamCompetencyHeatmap(department) {
         .withSuccessHandler(data => {
             loader.style.display = 'none';
             if (data.error) {
-                container.innerHTML = `<p class="text-red-500">Error: ${data.error}</p>`;
+                container.innerHTML = `<p class="text-red-500 text-center mt-4">${data.error}</p>`;
                 return;
             }
             if (data.employeeScores.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">No employees found.</p>';
+                container.innerHTML = '<p class="text-gray-500 text-center mt-4">No employees found matching these filters.</p>';
                 return;
             }
 
@@ -5087,7 +5804,6 @@ function drawTeamCompetencyHeatmap(department) {
             
             let headerHtml = '<tr><th class="sticky-col px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider border-r align-bottom shadow-sm">Employee Name</th>';
             
-            // --- NEW: Loop through headers and add Category Badges ---
             data.headers.forEach(headerObj => {
                 let badgeClass = "bg-gray-100 text-gray-800";
                 if (headerObj.category === "CORE") badgeClass = "bg-blue-100 text-blue-800";
@@ -5126,7 +5842,7 @@ function drawTeamCompetencyHeatmap(department) {
             loader.style.display = 'none';
             container.innerHTML = `<p class="text-red-500">An error occurred: ${err.message}</p>`;
         })
-        .getTeamCompetencyHeatmap(department);
+        .getTeamCompetencyHeatmap(filters);
 }
 
 function getHeatmapColor(score) {
@@ -5140,18 +5856,18 @@ function getHeatmapColor(score) {
     return '#ef4444'; // Red (only for actual low scores like 0.5)
 }
 
-// REPLACED - This is now the main function for the entire tab.
 function drawCompetencyDashboard(employeeId) {
+    // Show Loader
     document.getElementById('competency-charts-loader').style.display = 'flex';
-    document.getElementById('competency-summary-container').style.display = 'none';
-    document.getElementById('competency-history-container').style.display = 'none';
+    
+    // Hide Main Containers
+    document.getElementById('competency-dashboard-grid').style.display = 'none';
     document.getElementById('competency-charts-container').style.display = 'none';
 
-    // Destroy previous charts to prevent memory leaks
+    // Destroy previous charts to avoid glitches
     Object.values(chartInstances).forEach(chart => chart.destroy());
     chartInstances = {};
 
-    // Call the new, all-in-one backend function
     google.script.run.withSuccessHandler(analytics => {
         if (analytics.error) {
             alert('Error fetching competency analytics: ' + analytics.error);
@@ -5159,17 +5875,18 @@ function drawCompetencyDashboard(employeeId) {
             return;
         }
 
-        // --- Render all new components ---
+        // 1. Render the Top 4-Column Grid
         renderOverallScoreGauge(analytics.overall);
         renderStrengthsAndGaps(analytics.strengths, analytics.gaps);
-        renderRadarCharts(analytics.radarData);
         renderHistoricalChart(analytics.history);
 
-        // --- Show all containers ---
+        // 2. Render the Bottom Detailed Sections
+        renderRadarCharts(analytics.radarData);
+
+        // 3. Reveal Everything
         document.getElementById('competency-charts-loader').style.display = 'none';
-        document.getElementById('competency-summary-container').style.display = 'grid';
-        document.getElementById('competency-history-container').style.display = 'block';
-        document.getElementById('competency-charts-container').style.display = 'grid';
+        document.getElementById('competency-dashboard-grid').style.display = 'grid';
+        document.getElementById('competency-charts-container').style.display = 'flex';
 
     }).getCompetencyAnalytics(employeeId);
 }
@@ -5238,7 +5955,7 @@ function renderStrengthsAndGaps(strengths, gaps) {
     }
 }
 
-// FINAL COMPLETE VERSION - 3 Sections (List | Scores + Team | Chart + Team)
+// FINAL CORRECTED - 3-Section Layout with Deep Dive Restored
 function renderRadarCharts(radarData) {
 
     // Helper to render one full category row
@@ -5273,9 +5990,11 @@ function renderRadarCharts(radarData) {
                             </thead>
                             <tbody class="divide-y divide-gray-100">
                                 ${data.labels.map((label, i) => `
-                                    <tr class="hover:bg-blue-50 transition-colors">
+                                    <tr class="hover:bg-blue-50 transition-colors cursor-pointer" 
+                                        onclick="triggerDeepDive('${label.replace(/'/g, "\\'")}')" 
+                                        title="Click to Deep Dive">
                                         <td class="p-2 text-center font-bold text-slate-500 bg-gray-50 border-r">${i+1}</td>
-                                        <td class="p-2 text-slate-700">${label}</td>
+                                        <td class="p-2 text-slate-700 font-medium">${label}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -5297,7 +6016,7 @@ function renderRadarCharts(radarData) {
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
-                                ${data.labels.map((_, i) => {
+                                ${data.labels.map((label, i) => {
                                     const req = data.required[i];
                                     const act = data.actual[i];
                                     const team = data.team[i];
@@ -5308,7 +6027,9 @@ function renderRadarCharts(radarData) {
                                     const gapSign = gap > 0 ? '+' : '';
                                     
                                     return `
-                                    <tr class="hover:bg-gray-50">
+                                    <tr class="hover:bg-gray-50 cursor-pointer" 
+                                        onclick="triggerDeepDive('${label.replace(/'/g, "\\'")}')"
+                                        title="Click to Deep Dive">
                                         <td class="p-2 font-bold text-gray-400 bg-gray-50 border-r">${i+1}</td>
                                         <td class="p-2 border-r text-slate-600">${req}</td>
                                         <td class="p-2 border-r font-bold text-slate-800">${act}</td>
@@ -5352,7 +6073,8 @@ function renderRadarCharts(radarData) {
                     borderColor: 'rgb(239, 68, 68)',
                     pointBackgroundColor: 'rgb(239, 68, 68)',
                     borderWidth: 2,
-                    pointRadius: 3
+                    pointRadius: 4, // Made points slightly bigger for easier clicking
+                    pointHoverRadius: 6
                 }, {
                     label: 'Required',
                     data: data.required,
@@ -5363,14 +6085,13 @@ function renderRadarCharts(radarData) {
                     borderWidth: 2,
                     pointRadius: 3
                 }, {
-                    // --- TEAM AVERAGE DATASET ---
                     label: 'Team Avg',
                     data: data.team,
                     fill: false,
                     borderColor: 'rgb(22, 163, 74)', // Green
                     pointBackgroundColor: 'rgb(22, 163, 74)',
                     borderWidth: 2,
-                    borderDash: [4, 4], // Dashed line to distinguish it
+                    borderDash: [4, 4],
                     pointRadius: 2
                 }]
             },
@@ -5380,9 +6101,8 @@ function renderRadarCharts(radarData) {
                 plugins: {
                     legend: { 
                         position: 'bottom', 
-                        labels: { boxWidth: 10, font: { size: 10 }, padding: 10 } 
+                        labels: { boxWidth: 10, font: { size: 11 }, padding: 15 } 
                     },
-                    // SMART TOOLTIP: Shows Name when hovering Number
                     tooltip: {
                         callbacks: {
                             title: function(context) {
@@ -5404,9 +6124,29 @@ function renderRadarCharts(radarData) {
                             color: '#64748b'
                         }
                     }
+                },
+                // --- RESTORED ONCLICK EVENT ---
+                onClick: (event, elements) => {
+                    if (!elements.length) return;
+                    
+                    const index = elements[0].index;
+                    const competencyName = data.labels[index]; // Map index back to real name
+                    
+                    triggerDeepDive(competencyName);
+                },
+                onHover: (event, chartElement) => {
+                    event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
                 }
             }
         });
+    };
+
+    // Helper to call the modal logic safely
+    window.triggerDeepDive = (competencyName) => {
+        const employeeId = document.getElementById('competency-employee-select').value;
+        if (employeeId && competencyName) {
+            openDeepDiveModal(employeeId, competencyName);
+        }
     };
 
     // Render all 3 Categories
@@ -5415,27 +6155,29 @@ function renderRadarCharts(radarData) {
     renderCategoryRow('technical-section', 'Technical Competencies', radarData.technical);
 }
 
-// REVISED - Sleek, Compact History Chart
 function renderHistoricalChart(history) {
     const canvasId = 'historical-competency-chart';
-    const ctx = document.getElementById(canvasId).getContext('2d');
+    const canvas = document.getElementById(canvasId);
     
     // Handle empty history
     if (!history || history.datasets.length === 0 || history.datasets.every(d => d.data.length < 2)) {
-         document.getElementById('competency-history-container').style.display = 'none';
+         // Instead of hiding the whole container (which breaks the grid),
+         // we display a "No Data" message on the canvas parent.
+         const parent = canvas.parentElement;
+         parent.innerHTML = '<p class="text-gray-400 text-sm text-center italic mt-10">No historical data available.</p>';
          return;
     }
-    document.getElementById('competency-history-container').style.display = 'block';
 
-    // Destroy old instance if it exists
+    const ctx = canvas.getContext('2d');
+    
     if (chartInstances[canvasId]) {
         chartInstances[canvasId].destroy();
     }
 
-    // Define sleek colors for the datasets
+    // Colors: Blue & Red
     const colors = [
-        { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' }, // Blue
-        { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' }  // Red
+        { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' }, 
+        { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' } 
     ];
     
     const datasets = history.datasets.map((dataset, index) => ({
@@ -5444,12 +6186,10 @@ function renderHistoricalChart(history) {
         borderColor: colors[index % colors.length].border,
         backgroundColor: colors[index % colors.length].bg,
         borderWidth: 2,
-        tension: 0.4, // Smooth curves
-        fill: true,   // Area chart style (filled under line)
-        pointBackgroundColor: '#fff',
-        pointBorderColor: colors[index % colors.length].border,
-        pointRadius: 4,
-        pointHoverRadius: 6
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointBackgroundColor: '#fff'
     }));
 
     chartInstances[canvasId] = new Chart(ctx, {
@@ -5460,32 +6200,29 @@ function renderHistoricalChart(history) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false, // CRITICAL: Allows chart to fit the 300px height
+            maintainAspectRatio: false, // Fits the container height (approx 220px)
             plugins: {
               legend: { 
                   display: true, 
-                  position: 'top', 
-                  align: 'end',
-                  labels: { boxWidth: 12, usePointStyle: true } 
+                  position: 'bottom', // Move legend to bottom for narrow columns
+                  labels: { boxWidth: 8, font: { size: 10 }, usePointStyle: true } 
               },
               tooltip: { mode: 'index', intersect: false }
             },
             scales: {
                 x: {
-                    grid: { display: false } // Clean look (no vertical grid lines)
+                    display: true,
+                    grid: { display: false },
+                    ticks: { font: { size: 10 } } // Smaller font for years
                 },
                 y: {
+                    display: true,
                     beginAtZero: false,
                     suggestedMin: 1,
                     suggestedMax: 4,
-                    ticks: { stepSize: 1 },
+                    ticks: { stepSize: 1, display: false }, // Hide Y-axis numbers to save space
                     grid: { borderDash: [5, 5] }
                 }
-            },
-            interaction: {
-              mode: 'nearest',
-              axis: 'x',
-              intersect: false
             }
         }
     });
@@ -5566,18 +6303,11 @@ function buildCategory(title) {
     return `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm"><div class="md:col-span-2 mt-3 mb-1"><h3 class="text-lg font-bold text-slate-700 border-b pb-1">${title}</h3></div></div>`;
 }
 
-/**
- * REBUILT FUNCTION: Shows the request details in the new categorized "Before/After" modal.
- * This function replaces the original showRequestDetails.
- */
 function showRequestDetails(requestId, context) {
-    // --- !! GUARD CLAUSE !! ---
-    // This check prevents the function from running if the main employee data hasn't been loaded yet.
     if (!fullEmployeeData || fullEmployeeData.length === 0) {
         alert("The main employee data is still loading. Please wait a moment and try again.");
         return;
     }
-    // --- END GUARD CLAUSE ---
 
     const modal = document.getElementById('request-details-modal');
     const title = document.getElementById('request-details-modal-title');
@@ -5586,9 +6316,8 @@ function showRequestDetails(requestId, context) {
 
     title.textContent = `Details for Request ID: ${requestId}`;
     body.innerHTML = '<p>Loading...</p>';
-    footer.innerHTML = ''; // Clear old buttons
+    footer.innerHTML = '';
 
-    // Get the specific request data from the global object
     const requestData = (context === 'my-requests')
       ? window.allChangeRequests.myRequests.find(r => r.RequestID == requestId)
       : window.allChangeRequests.approvals.find(r => r.RequestID == requestId);
@@ -5602,120 +6331,138 @@ function showRequestDetails(requestId, context) {
     const requestType = requestData.RequestType;
     let beforeData = {};
     let afterData = {};
-    let detailsHtml = `<div class="grid grid-cols-1 gap-y-1">`; // Use a single column for categories
 
-    // --- CATEGORIES AND LABELS (Using camelCase keys) ---
+    let detailsHtml = `<div class="md:col-span-2">`;
+
+    detailsHtml += `
+        <div class="mb-4 pb-2 border-b border-gray-200">
+            <span class="block text-xs font-bold text-gray-500 uppercase">Request Type</span>
+            <span class="text-xl font-bold text-slate-800">${requestType}</span>
+        </div>
+        <div class="grid grid-cols-1 gap-y-1">
+    `;
+
     const categories = {
         'EMPLOYEE DETAILS': ['employeeName', 'employeeId', 'gender', 'dateHired', 'dateOfBirth'],
-        'JOB DETAILS': ['jobTitle', 'level', 'status', 'contractType', 'competency', 'jobLevel', 'payrollType'],
+        'JOB DETAILS': ['jobTitle', 'level', 'status', 'contractType', 'competency', 'jobLevel', 'payrollType', 'effectiveDate'], 
         'ORGANIZATIONAL ASSIGNMENT': ['positionId', 'division', 'group', 'department', 'section', 'managerName', 'managerEmployeeId']
     };
 
     const keyToLabelMap = {
         employeeName: 'Name', employeeId: 'Employee ID', gender: 'Gender', dateHired: 'Date Hired', dateOfBirth: 'Date of Birth',
-        jobTitle: 'Job Title', level: 'Level', status: 'Status', contractType: 'Contract Type', contractEndDate: 'Contract End',
+        jobTitle: 'Job Title', level: 'Level', status: 'Status', contractType: 'Contract Type',
         positionId: 'Position ID', division: 'Division', group: 'Group', department: 'Department', section: 'Section',
         managerName: 'Reports To (Name)', managerEmployeeId: 'Reports To (ID)',
-        competency: 'Competency', jobLevel: 'Job Level', payrollType: 'Payroll Type',
-        // Request-specific fields
+        competency: 'Competency', jobLevel: 'Job Level', payrollType: 'Payroll Type', effectiveDate: 'Effective Date',
         RequestID: 'Request ID', RequestorEmail: 'Requestor', SubmissionTimestamp: 'Submitted', Status: 'Status', RequestType: 'RequestType',
         ApproverEmail: 'Approver', ApprovalTimestamp: 'Approved On', ApproverComments: 'Approver Comments', ImplementerEmail: 'Implemented By',
         ImplementationTimestamp: 'Implemented On', Justification: 'Justification', EffectiveDate: 'Effective Date',
         JiraTicket: 'Jira Ticket', SupportingDocuments: 'Documents'
     };
 
-    // --- Data Preparation ---
     try {
         if (requestType.includes('Transfer') || requestType.includes('Promotion')) {
-            const beforePos = fullEmployeeData.find(p => p.positionId === requestData.CurrentPositionID);
-            const afterPosBase = fullEmployeeData.find(p => p.positionId === requestData.NewPositionID);
-            if (!beforePos || !afterPosBase) { throw new Error("Could not find 'before' or 'after' position data. The org chart may have changed."); }
+            const curPosId = String(requestData.CurrentPositionID || '').trim();
+            const newPosId = String(requestData.NewPositionID || '').trim();
+
+            const beforePos = fullEmployeeData.find(p => String(p.positionId).trim() === curPosId);
+            const afterPosBase = fullEmployeeData.find(p => String(p.positionId).trim() === newPosId);
             
-            // "Before" is the original position
-            beforeData = { ...beforePos };
-            
-            // --- *** THIS IS THE FIX *** ---
-            // "After" is the destination position...
-            // ...explicitly populated with the employee details *from the request data*...
-            // ...and mapped from PascalCase (requestData) to camelCase (for the modal).
+            beforeData = beforePos || {}; 
             afterData = { 
-                ...afterPosBase, // Destination position details (e.g., new jobTitle, new manager)
-                
-                // Employee details from the request (requestData)
+                ...(afterPosBase || {}), 
                 employeeName: requestData.EmployeeName, 
                 employeeId: requestData.EmployeeID,
                 gender: requestData.Gender, 
                 dateHired: requestData.DateHired, 
                 dateOfBirth: requestData.DateOfBirth,
-                
-                // Request status details
                 status: requestData.RequestType, 
-                effectiveDate: requestData.EffectiveDate, 
-                
-                // Explicitly keep destination manager details
-                managerName: afterPosBase.managerName, 
-                managerEmployeeId: afterPosBase.managerEmployeeId
+                effectiveDate: requestData.EffectiveDate,
+                managerName: afterPosBase ? afterPosBase.managerName : '', 
+                managerEmployeeId: afterPosBase ? afterPosBase.managerEmployeeId : ''
             };
-            // --- *** END FIX *** ---
 
         } else if (requestType.includes('replacement for vacancy')) {
-            beforeData = fullEmployeeData.find(p => p.positionId === requestData.VacantPositionID);
-            if (!beforeData) { throw new Error("Could not find the vacant position to be filled."); }
+            const vacPosId = String(requestData.VacantPositionID || '').trim();
+            beforeData = fullEmployeeData.find(p => String(p.positionId).trim() === vacPosId) || {};
             afterData = {
                 ...beforeData, status: 'FILLED VACANCY', effectiveDate: requestData.EffectiveDate,
-                // These are blank because a "replacement" request doesn't include new hire details
-                employeeName: '', employeeId: '', gender: '', dateHired: '', dateOfBirth: ''
+                employeeName: requestData.NewEmployeeName, 
+                employeeId: requestData.NewEmployeeID, 
+                gender: '', dateHired: '', dateOfBirth: ''
             };
+
         } else if (requestType.includes('newly created position')) {
             beforeData = {}; 
             afterData = {
-                ...requestData, // Contains PascalCase keys from the request
-                // Map PascalCase from request to camelCase for the modal
-                positionId: 'TBD (New)', 
-                status: 'VACANT', 
-                jobTitle: requestData.NewJobTitle,
-                level: requestData.NewLevel,
-                managerName: requestData.ReportingTo, 
-                managerEmployeeId: requestData.ReportingToId,
-                // Blank employee details
+                ...requestData, 
+                positionId: 'TBD (New)', status: 'VACANT', 
+                jobTitle: requestData.NewJobTitle, level: requestData.NewLevel,
+                managerName: requestData.ReportingTo, managerEmployeeId: requestData.ReportingToId,
                 employeeName: '', employeeId: '', gender: '', dateHired: '', dateOfBirth: ''
             };
+        
+        } else if (requestType.includes('Resignation') || requestType.includes('Separation')) {
+            const empId = String(requestData.EmployeeID || '').trim();
+            beforeData = fullEmployeeData.find(p => String(p.employeeId).trim() === empId) || {};
+            afterData = { ...beforeData, status: 'RESIGNED', effectiveDate: requestData.EffectiveDate };
+        
+        } else if (requestType.includes('Employment Status') || requestType.includes('Regularization')) {
+            const empId = String(requestData.EmployeeID || '').trim();
+            beforeData = fullEmployeeData.find(p => String(p.employeeId).trim() === empId) || {};
+            const newStatus = requestType.includes('Regularization') ? 'REGULAR' : requestData.NewStatus;
+            afterData = { ...beforeData, status: newStatus, effectiveDate: requestData.EffectiveDate };
+        
+        } else if (requestType.includes('Reporting line')) {
+            const empId = String(requestData.EmployeeID || '').trim();
+            beforeData = fullEmployeeData.find(p => String(p.employeeId).trim() === empId) || {};
+            afterData = { ...beforeData, managerName: requestData.NewReportingToName, effectiveDate: requestData.EffectiveDate };
+        
+        } else if (requestType.includes('Job Title')) {
+            const empId = String(requestData.EmployeeID || '').trim();
+            beforeData = fullEmployeeData.find(p => String(p.employeeId).trim() === empId) || {};
+            afterData = { ...beforeData, jobTitle: requestData.NewJobTitle, effectiveDate: requestData.EffectiveDate };
+        
+        } else if (requestType.includes('Name Correction')) {
+            const empId = String(requestData.EmployeeID || '').trim();
+            beforeData = fullEmployeeData.find(p => String(p.employeeId).trim() === empId) || {};
+            const newName = requestData.NewName || requestData.NewEmployeeName;
+            afterData = { ...beforeData, employeeName: newName };
+        
+        } else if (requestType.includes('Position on Hold') || requestType.includes('Cancelled') || requestType.includes('Deleted')) {
+            const targetPosId = String(requestData.CurrentPositionID || requestData.PositionID || '').trim();
+            const foundPos = fullEmployeeData.find(p => String(p.positionId).trim() === targetPosId);
+            beforeData = foundPos || {};
+            afterData = { ...beforeData, status: requestData.Action };
         }
+
     } catch (e) {
+        console.error(e);
         body.innerHTML = `<p class="text-red-500">Error preparing comparison: ${e.message}</p>`;
         footer.innerHTML = `<button onclick="closeRequestDetailsModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Close</button>`;
         modal.style.display = 'flex';
         return;
     }
-    
-    // --- Build HTML (Comparison Sections) ---
+
     for (const [category, keys] of Object.entries(categories)) {
         let categoryHtml = '';
-
-        // This correctly skips the employee section for non-promotion/transfer requests
-        if (category === 'EMPLOYEE DETAILS' && !(requestType.includes('Transfer') || requestType.includes('Promotion'))) {
+        if (category === 'EMPLOYEE DETAILS' && !(requestType.includes('Transfer') || requestType.includes('Promotion') || requestType.includes('Name') || requestType.includes('replacement'))) {
             continue;
         }
-
         for (const key of keys) {
-            // key is camelCase (e.g., 'employeeName')
             const dataKey = key; 
+            let beforeStr = (beforeData[dataKey] === null || typeof beforeData[dataKey] === 'undefined') ? '' : String(beforeData[dataKey]);
+            let afterStr = (afterData[dataKey] === null || typeof afterData[dataKey] === 'undefined') ? '' : String(afterData[dataKey]);
             
-            if (beforeData[dataKey] || afterData[dataKey] || (beforeData[dataKey] !== afterData[dataKey])) {
-                
+            if (key.toLowerCase().includes('date') && beforeStr) beforeStr = new Date(beforeStr).toLocaleDateString();
+            if (key.toLowerCase().includes('date') && afterStr) afterStr = new Date(afterStr).toLocaleDateString();
+
+            if (beforeStr || afterStr || (beforeStr !== afterStr)) {
                 const label = keyToLabelMap[key] || key;
-                
-                // --- *** THIS IS THE SECOND FIX *** ---
-                // Removed the flawed logical swap. "Before" is always beforeData. "After" is always afterData.
-                let beforeStr = (beforeData[dataKey] === null || typeof beforeData[dataKey] === 'undefined') ? '' : String(beforeData[dataKey]);
-                let afterStr = (afterData[dataKey] === null || typeof afterData[dataKey] === 'undefined') ? '' : String(afterData[dataKey]);
-                // --- *** END FIX *** ---
-                
                 const before = beforeStr || '<i class="text-gray-400">N/A</i>';
                 const after = afterStr || '<i class="text-gray-400">N/A</i>';
-
                 let afterClass = 'text-gray-800 text-left whitespace-nowrap';
-                // This comparison now works correctly
+                
                 if (beforeStr !== afterStr) {
                     afterClass = 'text-blue-600 font-bold bg-blue-100 px-1 rounded text-left whitespace-nowrap';
                 }
@@ -5730,35 +6477,27 @@ function showRequestDetails(requestId, context) {
         
         if (categoryHtml) {
             detailsHtml += buildCategory(category);
-            
             detailsHtml += `
                 <div class="grid grid-cols-[160px,1fr,1fr] gap-x-4">
                     <div class="py-2"></div>
                     <div class="font-bold text-gray-800 text-left py-2">Before</div>
                     <div class="font-bold text-gray-800 text-left py-2">After</div>
-                    
                     ${categoryHtml}
                 </div>
             `;
         }
     }
     
-    // --- Add Request-Specific Details (non-comparison) ---
-    detailsHtml += buildCategory('REQUEST DETAILS');
-    const requestFields = ['RequestID', 'RequestType', 'Status', 'RequestorEmail', 'SubmissionTimestamp', 'ApproverEmail', 'ApprovalTimestamp', 'ImplementerEmail', 'ImplementationTimestamp', 'EffectiveDate', 'Justification', 'ApproverComments', 'JiraTicket', 'SupportingDocuments'];
+    detailsHtml += buildCategory('ADDITIONAL DETAILS');
+    const requestFields = ['RequestID', 'RequestorEmail', 'SubmissionTimestamp', 'ApproverEmail', 'ApprovalTimestamp', 'ImplementerEmail', 'ImplementationTimestamp', 'Justification', 'ApproverComments', 'JiraTicket', 'SupportingDocuments'];
     
     requestFields.forEach(key => {
         if (requestData.hasOwnProperty(key) && requestData[key]) {
-            // Don't show effective date here if it was already shown in the 'after' column
-            if (key === 'EffectiveDate' && (requestType.includes('replacement') || requestType.includes('Transfer') || requestType.includes('Promotion'))) { return; }
-            
             let value = requestData[key];
             if (key === 'SupportingDocuments') {
                 value = `<button onclick="openDocumentViewer('${requestData.RequestID}')" class="text-blue-600 hover:underline">View Documents</button>`;
             } else if (key.includes('Timestamp') && value) {
                 value = new Date(value).toLocaleDateString() + ' ' + new Date(value).toLocaleTimeString();
-            } else if (key === 'EffectiveDate' && value) {
-                value = new Date(value).toLocaleDateString();
             }
             
             detailsHtml += `
@@ -5770,10 +6509,28 @@ function showRequestDetails(requestId, context) {
         }
     });
 
-    detailsHtml += `</div>`;
+    if (requestData.AuditTrail) {
+        detailsHtml += buildCategory('AUDIT TRAIL / HISTORY');
+        const logs = requestData.AuditTrail.split('\n').filter(line => line.trim() !== '');
+        
+        let logHtml = '<div class="space-y-2 bg-gray-50 p-3 rounded border">';
+        logs.forEach(log => {
+            let colorClass = 'text-gray-600';
+            if(log.includes('RETURNED')) colorClass = 'text-yellow-700 font-bold';
+            if(log.includes('REJECTED')) colorClass = 'text-red-700 font-bold';
+            if(log.includes('APPROVED')) colorClass = 'text-green-700 font-bold';
+            if(log.includes('RESUBMITTED')) colorClass = 'text-blue-700 font-bold';
+            
+            logHtml += `<div class="text-xs ${colorClass} border-b border-gray-200 pb-1 last:border-0">${log}</div>`;
+        });
+        logHtml += '</div>';
+        
+        detailsHtml += logHtml;
+    }
+
+    detailsHtml += `</div></div>`;
     body.innerHTML = detailsHtml;
 
-    // --- Footer & Action Buttons (Unchanged) ---
     footer.innerHTML = `<button onclick="closeRequestDetailsModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Close</button>`;
     let actionButtons = '';
     if (['Pending', 'Approved', 'Implemented'].includes(requestData.Status)) {
@@ -5814,31 +6571,186 @@ function renderMyRequestsTable() {
 
     table.DataTable({
         data: requests,
-            columns: [
+        columns: [
             { title: 'Request ID', data: 'RequestID', render: function(data, type, row) {
                 return `<span class="text-blue-600 hover:underline cursor-pointer" onclick="showRequestDetails('${row.RequestID}', 'my-requests')">${data}</span>`;
               }
             },
             { title: 'Requestor', data: 'RequestorEmail' },
             { title: 'Type of Request', data: 'RequestType' },
-            { title: 'Status', data: 'Status' },
-            {
-              title: 'Documents',
-              data: 'SupportingDocuments',
-              render: function(data, type, row) {
-                if (row.SupportingDocuments) { 
-                  return `<button onclick="openDocumentViewer('${row.RequestID}')" class="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">View</button>`;
+            { title: 'Status', data: 'Status', render: function(data, type, row) {
+                let color = 'text-gray-600';
+                if(data === 'Approved') color = 'text-green-600 font-bold';
+                if(data === 'Rejected') color = 'text-red-600 font-bold';
+                if(data === 'Returned') color = 'text-yellow-600 font-bold';
+                return `<span class="${color}">${data}</span>`;
+            }},
+            { title: 'Action', data: null, render: function(data, type, row) {
+                if (row.Status === 'Returned') {
+                    return `<button onclick="editChangeRequest('${row.RequestID}')" class="px-2 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600 shadow">Edit</button>`;
                 }
-                return 'N/A';
-              },
-              className: 'text-center'
-            }
+                return '';
+            }}
         ],
         responsive: false,
         scrollX: true,
         dom: 'Bfrtip',
         buttons: ['colvis']
     });
+}
+
+function editChangeRequest(requestId) {
+    const request = window.allChangeRequests.myRequests.find(r => r.RequestID === requestId);
+    if (!request) { alert("Request data not found."); return; }
+
+    // 1. Open Modal
+    document.getElementById('request-modal').style.display = 'flex';
+
+    // --- FIX: LOAD APPROVERS IMMEDIATELY ---
+    const approverSelect = document.getElementById('approver-email-select');
+    approverSelect.innerHTML = '<option value="">Loading approvers...</option>';
+    
+    google.script.run
+        .withSuccessHandler(approvers => {
+            approverSelect.innerHTML = '<option value="">-- Select an Approver --</option>';
+            if (approvers && approvers.length > 0) {
+                approvers.forEach(approver => {
+                    const option = document.createElement('option');
+                    option.value = approver.email;
+                    option.textContent = approver.email;
+                    approverSelect.appendChild(option);
+                });
+                
+                // Set the previously selected approver if available
+                if (request.ApproverEmail) {
+                    approverSelect.value = request.ApproverEmail;
+                }
+            } else {
+                approverSelect.innerHTML = '<option value="">No approvers found (Check Permissions Sheet)</option>';
+            }
+        })
+        .withFailureHandler(err => {
+            approverSelect.innerHTML = `<option value="">Error loading approvers</option>`;
+            console.error("Failed to load approvers:", err);
+        })
+        .getApproverList();
+
+    // 2. Set Request Type and Trigger Change to build HTML
+    const typeSelect = document.getElementById('request-type');
+    typeSelect.value = request.RequestType;
+    handleRequestTypeChange(); // Build fields
+
+    // 3. Populate Fields (Delayed to ensure DOM is ready)
+    setTimeout(() => {
+        // --- FIX: RE-FETCH LIVE EMPLOYEE DATA ---
+        let liveEmpData = {};
+        if (request.EmployeeID) {
+             const foundEmp = fullEmployeeData.find(e => String(e.employeeId).trim() === String(request.EmployeeID).trim());
+             if (foundEmp) liveEmpData = foundEmp;
+        }
+
+        const map = {
+            'justification': request.Justification,
+            'effective-date-request': request.EffectiveDate ? new Date(request.EffectiveDate).toISOString().split('T')[0] : '',
+            
+            'request-EmployeeID': request.EmployeeID,
+            'request-DateHired': request.DateHired ? new Date(request.DateHired).toISOString().split('T')[0] : (liveEmpData.dateHired || ''),
+            'request-DateOfBirth': request.DateOfBirth ? new Date(request.DateOfBirth).toISOString().split('T')[0] : (liveEmpData.dateOfBirth || ''),
+            'request-Gender': request.Gender || liveEmpData.gender,
+
+            'request-Division': request.Division || liveEmpData.division,
+            'request-Group': request.Group || liveEmpData.group,
+            'request-Department': request.Department || liveEmpData.department,
+            'request-Section': request.Section || liveEmpData.section,
+            'request-JobTitle': request.JobTitle || liveEmpData.jobTitle,
+            'request-Level': request.Level || liveEmpData.level,
+            'request-JobLevel': request.JobLevel || liveEmpData.jobLevel,
+            'request-ContractType': request.ContractType || liveEmpData.contractType,
+
+            'current-position-id': request.CurrentPositionID || liveEmpData.positionId,
+            'current-reporting-to': request.CurrentReportingTo || liveEmpData.managerName,
+            'current-job-title': request.CurrentJobTitle || liveEmpData.jobTitle,
+            'current-name': request.EmployeeName || liveEmpData.employeeName,
+            'reporting-to-id-request': request.ReportingToId,
+            'request-NewReportingTo': request.NewReportingTo,
+            'request-NewReportingToId': request.NewReportingToId,
+            'request-job-title': request.NewJobTitle,
+            'request-reporting-to': request.ReportingTo,
+            'request-reporting-to-id': request.ReportingToId
+        };
+
+        for (const [id, val] of Object.entries(map)) {
+            const el = document.getElementById(id);
+            if(el) el.value = val || '';
+        }
+
+        const setDrop = (id, val) => {
+            const container = document.getElementById(id);
+            if (container) {
+                const input = container.querySelector('.searchable-dropdown-input');
+                if(input) input.value = val || '';
+                if (val && id.startsWith('req-filter')) container.removeAttribute('data-empty');
+            }
+        };
+
+        setDrop('req-filter-employee', request.EmployeeName || liveEmpData.employeeName);
+        setDrop('req-filter-division', request.Division || liveEmpData.division);
+        setDrop('req-filter-group', request.Group || liveEmpData.group);
+        setDrop('req-filter-department', request.Department || liveEmpData.department);
+        setDrop('req-filter-section', request.Section || liveEmpData.section);
+
+        setDrop('new-position-dropdown', request.NewPositionID);
+        setDrop('new-job-title-dropdown', request.NewJobTitle);
+        setDrop('vacant-position-dropdown', request.VacantPositionID);
+        setDrop('new-status-dropdown', request.NewStatus);
+        setDrop('position-id-dropdown', request.CurrentPositionID || request.PositionID);
+        setDrop('new-reporting-to-dropdown', request.NewReportingToName);
+        setDrop('reason-leaving-request-dropdown', request.ReasonForLeaving);
+
+        setDrop('request-division-dropdown', request.Division);
+        setDrop('request-group-dropdown', request.Group);
+        setDrop('request-department-dropdown', request.Department);
+        setDrop('request-section-dropdown', request.Section);
+
+        const actionSelect = document.querySelector('select[name="Action"]');
+        if(actionSelect && request.Action) actionSelect.value = request.Action;
+
+        // Handle Files
+        const oldMsg = document.getElementById('existing-docs-msg');
+        if(oldMsg) oldMsg.remove();
+
+        const form = document.getElementById('request-form');
+        if (request.SupportingDocuments && request.SupportingDocuments !== '') {
+            form.dataset.hasAttachments = 'true';
+            const attachContainer = document.querySelector('.attachment-group');
+            if(attachContainer) {
+                const msg = document.createElement('div');
+                msg.id = 'existing-docs-msg';
+                msg.className = 'text-xs text-green-600 font-bold mt-2 p-2 bg-green-50 border border-green-200 rounded';
+                msg.innerHTML = `✅ Previous documents attached. <span onclick="openDocumentViewer('${request.RequestID}')" class="underline text-blue-600 cursor-pointer">View</span>`;
+                attachContainer.parentNode.insertBefore(msg, attachContainer.nextSibling);
+            }
+        } else {
+            form.dataset.hasAttachments = 'false';
+        }
+
+        let hiddenId = document.getElementById('edit-request-id');
+        if(!hiddenId) {
+            hiddenId = document.createElement('input');
+            hiddenId.type = 'hidden';
+            hiddenId.id = 'edit-request-id';
+            document.getElementById('request-form').appendChild(hiddenId);
+        }
+        hiddenId.value = requestId;
+
+        const submitBtn = document.querySelector('#request-form button[onclick="submitRequest()"]');
+        if (submitBtn) {
+            submitBtn.textContent = "Resubmit Request";
+            submitBtn.classList.remove('bg-blue-600');
+            submitBtn.classList.add('bg-yellow-600');
+        }
+
+    }, 200);
 }
 
 function renderApprovalsTable() {
@@ -5923,8 +6835,15 @@ function refreshChangeRequestData() {
 }
 
 function handleApprovalAction(requestId, action) {
+  // If action is "Returned", use the new Modal flow
+  if (action === 'Returned') {
+      openReturnModal(requestId);
+      return; 
+  }
+
+  // Existing logic for Approve/Reject
   let comments = '';
-  if (action === 'Returned' || action === 'Rejected') {
+  if (action === 'Rejected') {
     comments = prompt(`Comments are required for this action (${action}):`);
     if (comments === null) return;
     if (!comments.trim()) {
@@ -5932,23 +6851,23 @@ function handleApprovalAction(requestId, action) {
       return;
     }
   } else {
-    // For "Approve", comments are optional.
     comments = prompt(`Please provide optional comments for this action (${action}):`);
-    if (comments === null) return; // User clicked cancel, so we stop.
+    if (comments === null) return;
   }
   
+  processActionBackend(requestId, action, comments);
+}
+
+// Helper to call backend (refactored to avoid code duplication)
+function processActionBackend(requestId, action, comments) {
   showSavingOverlay('Processing Action...');
   google.script.run
     .withSuccessHandler(response => {
       hideSavingOverlay();
       alert(response);
       closeRequestDetailsModal();
-      
-      // Force a refresh of the data and redraw the currently active table
-      // changeRequestsDataLoaded = false; // This line is now removed
-      loadChangeRequestData(renderApprovalsTable); // Redraw the approvals table specifically
-
-      google.script.run.withSuccessHandler(updateNotificationBadges).getRequestCounts();
+      closeReturnModal(); // Ensure return modal is closed if open
+      refreshChangeRequestData(); // Refresh tables
     })
     .withFailureHandler(err => {
       hideSavingOverlay();
@@ -5956,6 +6875,96 @@ function handleApprovalAction(requestId, action) {
     })
     .processRequestAction(requestId, action, comments);
 }
+
+// --- RETURN MODAL LOGIC START ---
+
+// Global variable to store the ID of the request currently being returned
+let currentReturnRequestId = null;
+
+function openReturnModal(requestId) {
+    currentReturnRequestId = requestId;
+    const container = document.getElementById('return-checklist-container');
+    container.innerHTML = '';
+    
+    // Define standard fields to check
+    const fieldsToCheck = [
+        { id: 'chk-effective', label: 'Effective Date' },
+        { id: 'chk-employee', label: 'Employee Details (Name/ID)' },
+        { id: 'chk-position', label: 'Position / Job Details' },
+        { id: 'chk-justification', label: 'Justification' },
+        { id: 'chk-documents', label: 'Attachments / Documents' },
+        { id: 'chk-reason', label: 'Reason for Leaving' },
+        { id: 'chk-other', label: 'Other' }
+    ];
+
+    fieldsToCheck.forEach(field => {
+        const item = document.createElement('div');
+        item.className = "bg-gray-50 p-2 rounded border border-gray-200";
+        item.innerHTML = `
+            <div class="flex items-center">
+                <input type="checkbox" id="${field.id}" class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" onchange="toggleCommentBox('${field.id}')">
+                <label for="${field.id}" class="ml-2 block text-sm font-medium text-gray-700 cursor-pointer select-none">${field.label}</label>
+            </div>
+            <input type="text" id="${field.id}-comment" class="mt-2 w-full p-1 text-sm border-b border-gray-300 bg-transparent focus:outline-none focus:border-blue-500" placeholder="Specify error (e.g., Wrong date)..." style="display:none;">
+        `;
+        container.appendChild(item);
+    });
+
+    document.getElementById('return-general-comment').value = '';
+    document.getElementById('return-modal').style.display = 'flex';
+}
+
+function toggleCommentBox(checkboxId) {
+    const checkbox = document.getElementById(checkboxId);
+    const commentBox = document.getElementById(checkboxId + '-comment');
+    if (checkbox.checked) {
+        commentBox.style.display = 'block';
+        commentBox.focus();
+    } else {
+        commentBox.style.display = 'none';
+        commentBox.value = '';
+    }
+}
+
+function closeReturnModal() {
+    document.getElementById('return-modal').style.display = 'none';
+    currentReturnRequestId = null;
+}
+
+function submitReturnDecision() {
+    if (!currentReturnRequestId) return;
+
+    // 1. Gather checked items
+    const checkboxes = document.querySelectorAll('#return-checklist-container input[type="checkbox"]:checked');
+    // Allow return if EITHER a checkbox is checked OR a general comment is written
+    const generalComment = document.getElementById('return-general-comment').value.trim();
+    
+    if (checkboxes.length === 0 && !generalComment) {
+        alert("Please select at least one field or provide a general comment.");
+        return;
+    }
+
+    let structuredComments = [];
+    
+    checkboxes.forEach(cb => {
+        const label = cb.nextElementSibling.textContent;
+        const commentInput = document.getElementById(cb.id + '-comment');
+        const specificComment = commentInput.value.trim() ? `: ${commentInput.value.trim()}` : '';
+        structuredComments.push(`[${label}${specificComment}]`);
+    });
+
+    if (generalComment) {
+        structuredComments.push(`Note: ${generalComment}`);
+    }
+
+    // 3. Combine into final string
+    const finalCommentString = structuredComments.join('\n');
+
+    // 4. Send to Backend using the helper function
+    processActionBackend(currentReturnRequestId, 'Returned', finalCommentString);
+}
+
+// --- RETURN MODAL LOGIC END ---
 
 function handleImplementAction(requestId) {
   if (!confirm('Are you sure you want to implement this change? This will permanently alter the main org chart.')) {
@@ -6137,15 +7146,16 @@ function openDocumentViewer(requestId) {
             if (fileList.length === 0) {
                 contentArea.innerHTML = '<p class="text-center text-gray-600 font-bold">No documents are attached to this request.</p>';
             } else if (fileList.length === 1) {
-                // If there's only one file, show it directly.
                 showDocumentInViewer(fileList[0].url);
             } else {
-                // If there are multiple files, show a selection list.
                 let buttonsHtml = '<p class="mb-4">Please select a document to view:</p><div class="flex flex-col space-y-2">';
                 fileList.forEach(file => {
-                    // We need to escape the URL to handle special characters in file names
-                    const escapedUrl = escape(file.url);
-                    buttonsHtml += `<button onclick="showDocumentInViewer(unescape('${escapedUrl}'))" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">${escapeHtml(file.name)}</button>`;
+                    const escapedUrl = encodeURIComponent(file.url); // Use encodeURIComponent
+                    const originalName = file.name;
+                    let displayName = `<div class="text-left w-full">${escapeHtml(originalName)}</div>`;
+                    
+                    // Use decodeURIComponent in the onclick to get the URL back
+                    buttonsHtml += `<button onclick="showDocumentInViewer(decodeURIComponent('${escapedUrl}'))" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex justify-start items-center">${displayName}</button>`;
                 });
                 buttonsHtml += '</div>';
                 contentArea.innerHTML = buttonsHtml;
@@ -6155,6 +7165,26 @@ function openDocumentViewer(requestId) {
             contentArea.innerHTML = `<p class="text-red-500 text-center font-bold">Failed to retrieve documents. Error: ${err.message}</p>`;
         })
         .getRequestDocumentList(requestId);
+}
+
+function showDocumentInViewer(url) {
+    const contentArea = document.getElementById('jd-content-area');
+    // Convert /view to /preview for embedding if possible, but keep original for button
+    let embedUrl = url;
+    if (url.includes('/view')) {
+        embedUrl = url.replace('/view', '/preview');
+    }
+
+    if (url && url.startsWith('http')) {
+        contentArea.innerHTML = `
+            <div class="flex justify-end mb-2">
+                <a href="${url}" target="_blank" class="px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700">Open in New Tab</a>
+            </div>
+            <iframe src="${embedUrl}" style="width:100%; height:60vh; border:none;"></iframe>
+        `;
+    } else {
+        contentArea.innerHTML = '<p class="text-center text-red-600 font-bold">Invalid document URL provided.</p>';
+    }
 }
 
 /**
@@ -6276,31 +7306,23 @@ function drawPreviewChart(previewDataArray) {
     previewChart.draw(previewDataTable, { allowHtml: true, allowCollapse: true, nodeClass: 'google-visualization-orgchart-node' });
 }
 
-// --- ROBUST FUNCTION: Instantly Loads Profile from Org Chart ---
 function viewCompetencyProfile(rawEmployeeId) {
-  // 1. Safety Check & Logging
-  if (!rawEmployeeId) {
-    console.error("viewCompetencyProfile called with no ID");
-    return;
-  }
-  const employeeId = String(rawEmployeeId).trim(); // Ensure it's a clean string
-  console.log("Viewing Competency for ID:", employeeId);
+  if (!rawEmployeeId) return;
+  const employeeId = String(rawEmployeeId).trim();
 
-  // 2. Switch to the Competency Tab
   switchTab('competency');
 
-  // 3. FORCE the view to "Individual Profile" mode
+  // Force view to Individual Profile
   document.getElementById('individual-profile-view').style.display = 'block';
   document.getElementById('individual-profile-content').style.display = 'block';
   document.getElementById('team-competency-section').style.display = 'none';
   
-  // 4. PRE-SHOW the Chart Containers
-  // This ensures the space is reserved and ready for the charts
+  // Pre-show containers
   document.getElementById('competency-summary-container').style.display = 'grid';
   document.getElementById('competency-history-container').style.display = 'block';
   document.getElementById('competency-charts-container').style.display = 'grid';
   
-  // 5. Update Toggle Buttons Styling
+  // Update buttons styling
   const btnProfile = document.getElementById('show-individual-profile');
   const btnTeam = document.getElementById('show-team-heatmap');
   if (btnProfile && btnTeam) {
@@ -6310,38 +7332,22 @@ function viewCompetencyProfile(rawEmployeeId) {
       btnTeam.classList.remove('bg-white', 'shadow', 'text-blue-700');
   }
 
-  // 6. LOAD DATA DIRECTLY (Instant)
-  // This fetches data and draws the charts immediately
-  if (typeof drawCompetencyDashboard === 'function') {
-      drawCompetencyDashboard(employeeId);
-  } else {
-      console.error("drawCompetencyDashboard function is missing!");
-      alert("Error: Dashboard function not loaded. Please refresh.");
-  }
+  // Load Data
+  drawCompetencyDashboard(employeeId);
 
-  // 7. Sync the Dropdown (Background Task)
-  // We keep trying to set the dropdown value until the list populates
-  let attempts = 0;
-  const syncDropdown = () => {
-    const dropdown = document.getElementById('competency-employee-select');
-    // Check if options are loaded (length > 1 means more than just "Loading...")
-    if (dropdown && dropdown.options.length > 1) {
-       dropdown.value = employeeId;
-       // If the value didn't stick (mismatch), log it
-       if (dropdown.value !== employeeId) {
-         console.warn("Dropdown sync mismatch. ID in list might differ from:", employeeId);
-       }
-    } else {
-       attempts++;
-       // Stop trying after 10 seconds (100 attempts * 100ms) to save memory
-       if (attempts < 100) {
-         setTimeout(syncDropdown, 100);
-       }
-    }
-  };
-  syncDropdown();
+  // Sync Filters: Auto-fill Division/Group/Dept based on the employee
+  const employee = fullEmployeeData.find(e => String(e.employeeId).trim() === employeeId);
+  if (employee) {
+      document.getElementById('comp-division-filter-value').value = employee.division || 'all';
+      document.getElementById('comp-group-filter-value').value = employee.group || 'all';
+      document.getElementById('comp-department-filter-value').value = employee.department || 'all';
+      document.getElementById('comp-section-filter-value').value = employee.section || 'all';
+      document.getElementById('competency-employee-select').value = employeeId;
+
+      // Trigger populate to update visual text in dropdowns
+      populateCompetencyFilters();
+  }
   
-  // 8. Scroll to view
   document.getElementById('competency-view').scrollIntoView({ behavior: 'smooth' });
 }
 
